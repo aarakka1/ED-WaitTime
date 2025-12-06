@@ -1,7 +1,7 @@
 # ============================================================
 # FULL FINAL PROJECT CODE — One Single Cell (Final for Databricks)
 # ============================================================
-!pip install mlflow xgboost openpyxl
+
 
 import os, mlflow, mlflow.sklearn
 import pandas as pd
