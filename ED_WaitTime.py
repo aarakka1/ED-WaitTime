@@ -3,7 +3,7 @@
 # ============================================================
 # NOTE: The !pip install command has been removed to prevent "SyntaxError: invalid syntax".
 # NOTE: MLflow configuration updated to explicitly handle authentication via ENV variables.
-
+app = Flask(__name__)
 import os, mlflow, mlflow.sklearn
 import pandas as pd
 import numpy as np
