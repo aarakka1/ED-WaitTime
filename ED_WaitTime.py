@@ -1,9 +1,6 @@
 # ============================================================
-# FULL FINAL PROJECT CODE — One Single Cell (Final for Deployment)
+# FULL FINAL PROJECT CODE — One Single File (Render-ready)
 # ============================================================
-# NOTE: The !pip install command has been removed to prevent "SyntaxError: invalid syntax".
-# NOTE: MLflow configuration updated to explicitly handle authentication via ENV variables.
-
 
 import os, mlflow, mlflow.sklearn
 import pandas as pd
@@ -12,6 +9,7 @@ import matplotlib.pyplot as plt
 import json
 import requests
 from flask import Flask, request, jsonify
+
 app = Flask(__name__)
 
 from sklearn.model_selection import train_test_split
@@ -28,35 +26,28 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.cluster import KMeans
 
+# This will hold the trained ensemble model for inference
+champion_model = None
 
 # ============================================================
-# MLflow Configuration (Updated for External Authentication)
+# MLflow Configuration
 # ============================================================
-# When running outside Databricks (e.g., on Render), we must explicitly set
-# the tracking URI to "databricks" and ensure DATABRICKS_HOST and DATABRICKS_TOKEN
-# environment variables are set in the deployment environment.
 
-# If the code runs locally/on Render, it will read DATABRICKS_HOST and DATABRICKS_TOKEN.
 mlflow.set_tracking_uri("databricks")
 
-# IMPORTANT: Ensure the username part of the path is correct for the active account!
-# This path must exist on your Databricks workspace.
 experiment_name = "/Users/arakkalakhila@gmail.com/Final_ED_WaitTime_Project"
 mlflow.set_experiment(experiment_name)
 
 print("✅ MLflow tracking: Databricks (Authenticating via DATABRICKS_HOST/TOKEN)")
 print("⬆️ Using experiment:", experiment_name)
 
-
 # ============================================================
 # Load Final Dataset
 # ============================================================
 
-# NOTE: Ensure FinalDS.xlsx is accessible
-file_path = "FinalDS.xlsx"   
+file_path = "FinalDS.xlsx"   # Make sure this file is in the repo root
 df = pd.read_excel(file_path)
 print("Loaded dataset:", df.shape)
-
 
 # ============================================================
 # Filter to Emergency Department rows
@@ -74,7 +65,6 @@ df_ed["Month"] = df_ed["Start Date"].dt.month
 
 print("Filtered ED dataset:", df_ed.shape)
 
-
 # ============================================================
 # Select features
 # ============================================================
@@ -85,7 +75,6 @@ feature_cols_num = ["ZIP Code", "Year", "Month"]
 X = df_ed[feature_cols_cat + feature_cols_num].copy()
 y = df_ed["Score"].copy()
 
-
 # ============================================================
 # Train/Test Split
 # ============================================================
@@ -93,7 +82,6 @@ y = df_ed["Score"].copy()
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
-
 
 # ============================================================
 # Preprocessing
@@ -106,7 +94,6 @@ preprocessor = ColumnTransformer(
     ]
 )
 
-
 # ============================================================
 # Helper function — Train + Log to MLflow
 # ============================================================
@@ -116,7 +103,6 @@ def train_and_log(model_name, model_pipeline):
         model_pipeline.fit(X_train, y_train)
         y_pred = model_pipeline.predict(X_test)
 
-        # Log all four key regression metrics
         rmse  = np.sqrt(mean_squared_error(y_test, y_pred))
         r2    = r2_score(y_test, y_pred)
         mae   = mean_absolute_error(y_test, y_pred)
@@ -130,49 +116,57 @@ def train_and_log(model_name, model_pipeline):
         mlflow.sklearn.log_model(
             sk_model=model_pipeline, 
             name=model_name, 
-            input_example=X_train.head(5) 
+            input_example=X_train.head(5)
         )
 
         print(f"📌 {model_name}: R²={r2:.3f}, RMSE={rmse:.3f}, MAE={mae:.3f}")
 
+    return model_pipeline, r2, rmse
 
 # ============================================================
-# Model Training Runs (Using helper function)
+# Model Training Runs
 # ============================================================
 
-# Linear Regression
+# 1) Linear Regression
 linreg = Pipeline([("prep", preprocessor), ("model", LinearRegression())])
-train_and_log("LinearRegression", linreg)
+linreg, linreg_r2, linreg_rmse = train_and_log("LinearRegression", linreg)
 
-# Random Forest
+# 2) Random Forest
 rf = Pipeline([
     ("prep", preprocessor),
     ("model", RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1))
 ])
-train_and_log("RandomForest", rf)
+rf, rf_r2, rf_rmse = train_and_log("RandomForest", rf)
 
-# XGBoost
+# 3) XGBoost
 xgb = Pipeline([
     ("prep", preprocessor),
-    ("model", XGBRegressor(n_estimators=300, learning_rate=0.05, max_depth=6, subsample=0.9, colsample_bytree=0.9, reg_lambda=1.0, random_state=42))
+    ("model", XGBRegressor(
+        n_estimators=300,
+        learning_rate=0.05,
+        max_depth=6,
+        subsample=0.9,
+        colsample_bytree=0.9,
+        reg_lambda=1.0,
+        random_state=42
+    ))
 ])
-train_and_log("XGBoost", xgb)
+xgb, xgb_r2, xgb_rmse = train_and_log("XGBoost", xgb)
 
-# Support Vector Regression (SVR)
+# 4) Support Vector Regression (SVR)
 svr = Pipeline([("prep", preprocessor), ("model", SVR(kernel="rbf", C=1.0, epsilon=0.1))])
-train_and_log("SVR", svr)
+svr, svr_r2, svr_rmse = train_and_log("SVR", svr)
 
-# Neural Network Regression (MLPRegressor)
+# 5) Neural Network Regression (MLPRegressor)
 mlp = Pipeline([
     ("prep", preprocessor),
     ("model", MLPRegressor(hidden_layer_sizes=(64, 32), activation="relu", max_iter=500, random_state=42))
 ])
-train_and_log("NeuralNetwork", mlp)
+mlp, mlp_r2, mlp_rmse = train_and_log("NeuralNetwork", mlp)
 
-# k-NN Regressor
+# 6) k-NN Regressor
 knn = Pipeline([("prep", preprocessor), ("model", KNeighborsRegressor(n_neighbors=5, weights="distance"))])
-train_and_log("KNNRegressor", knn)
-
+knn, knn_r2, knn_rmse = train_and_log("KNNRegressor", knn)
 
 # ============================================================
 # 7) Simple Ensemble (VotingRegressor) - CHAMPION MODEL
@@ -180,7 +174,15 @@ train_and_log("KNNRegressor", knn)
 
 estimators = [
     ('rf', RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1)),
-    ('xgb', XGBRegressor(n_estimators=300, learning_rate=0.05, max_depth=6, subsample=0.9, colsample_bytree=0.9, reg_lambda=1.0, random_state=42)),
+    ('xgb', XGBRegressor(
+        n_estimators=300,
+        learning_rate=0.05,
+        max_depth=6,
+        subsample=0.9,
+        colsample_bytree=0.9,
+        reg_lambda=1.0,
+        random_state=42
+    )),
     ('svr', SVR(kernel="rbf", C=1.0, epsilon=0.1))
 ]
 
@@ -189,8 +191,10 @@ ensemble_pipeline = Pipeline([
     ("model", VotingRegressor(estimators=estimators, weights=None, n_jobs=-1))
 ])
 
-train_and_log("VotingRegressorEnsemble", ensemble_pipeline)
+ensemble_pipeline, ensemble_r2, ensemble_rmse = train_and_log("VotingRegressorEnsemble", ensemble_pipeline)
 
+# Set champion model for inference
+champion_model = ensemble_pipeline
 
 # ============================================================
 # 8) k-Means Clustering (Unsupervised on Features)
@@ -207,7 +211,6 @@ with mlflow.start_run(run_name="KMeansClustering"):
 
     print(f"📌 KMeansClustering: Inertia={inertia:.3f}")
 
-
 # ============================================================
 # Summary
 # ============================================================
@@ -215,3 +218,61 @@ with mlflow.start_run(run_name="KMeansClustering"):
 print("\n🎉 All models logged to Databricks experiment.")
 print(f"⬆️ Deployable run: 'VotingRegressorEnsemble'")
 print("Ensure DATABRICKS_HOST and DATABRICKS_TOKEN are set in your deployment environment.")
+
+# ============================================================
+# Flask API for Render
+# ============================================================
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    """
+    Expects JSON like:
+    {
+        "State": "VA",
+        "County/Parish": "RICHMOND",
+        "Measure ID": "ED_1",
+        "Measure Name": "Emergency Department Wait Time",
+        "ZIP Code": 23219,
+        "Year": 2024,
+        "Month": 5
+    }
+    """
+    if champion_model is None:
+        return jsonify({"error": "Model not loaded"}), 500
+
+    data = request.get_json()
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+    try:
+        # Create a single-row DataFrame with exactly the same columns as training
+        input_row = {
+            "State": data["State"],
+            "County/Parish": data["County/Parish"],
+            "Measure ID": data["Measure ID"],
+            "Measure Name": data["Measure Name"],
+            "ZIP Code": data["ZIP Code"],
+            "Year": data["Year"],
+            "Month": data["Month"]
+        }
+        input_df = pd.DataFrame([input_row])
+
+        pred = champion_model.predict(input_df)[0]
+        return jsonify({"prediction": float(pred)}), 200
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing field in input JSON: {str(e)}"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================
+# Local entrypoint (Render will use gunicorn: `gunicorn app:app`)
+# ============================================================
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=True)
