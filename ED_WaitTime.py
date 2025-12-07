@@ -3,11 +3,16 @@
 # ============================================================
 # NOTE: The !pip install command has been removed to prevent "SyntaxError: invalid syntax".
 # NOTE: MLflow configuration updated to explicitly handle authentication via ENV variables.
-app = Flask(__name__)
+
+
 import os, mlflow, mlflow.sklearn
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import json
+import requests
+from flask import Flask, request, jsonify
+app = Flask(__name__)
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
