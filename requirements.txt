@@ -6,3 +6,6 @@ mlflow
 openpyxl
 databricks-sdk
 matplotlib
+flask
+gunicorn
+requests
