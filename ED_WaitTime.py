@@ -119,58 +119,70 @@ def health():
 def predict():
     """
     Predict endpoint: accepts JSON, forwards to Databricks MLflow endpoint.
+    Always returns JSON, even on errors, so the frontend never sees HTML error pages.
     """
-    body = request.get_json()
-
-    if not body:
-        return jsonify({"success": False, "error": "No JSON body provided."}), 400
-
-    is_valid, error_msg = validate_input(body)
-    if not is_valid:
-        return jsonify({"success": False, "error": error_msg}), 400
-
-    payload = build_dataframe_split(body)
-
     try:
-        resp = requests.post(SERVE_URL, headers=HEADERS, data=json.dumps(payload))
-        resp.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": f"Error calling Databricks endpoint: {str(e)}",
-                }
-            ),
-            500,
-        )
+        body = request.get_json()
 
-    try:
-        result = resp.json()
-    except ValueError:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": f"Non-JSON response from Databricks: {resp.text}",
-                }
-            ),
-            500,
-        )
+        if not body:
+            return jsonify({"success": False, "error": "No JSON body provided."}), 400
 
-    # Try to pull a prediction out of typical MLflow response shapes
-    if isinstance(result, dict) and "predictions" in result:
-        pred_value = result["predictions"][0]
-    else:
-        pred_value = result
+        # Validate input
+        is_valid, error_msg = validate_input(body)
+        if not is_valid:
+            return jsonify({"success": False, "error": error_msg}), 400
 
-    return jsonify(
-        {
-            "success": True,
-            "prediction": pred_value,
-            "raw_response": result,
-        }
-    )
+        # Build MLflow dataframe_split payload
+        payload = build_dataframe_split(body)
+
+        # Call Databricks endpoint
+        try:
+            resp = requests.post(SERVE_URL, headers=HEADERS, data=json.dumps(payload))
+        except requests.exceptions.RequestException as e:
+            # Network / connection issues
+            return jsonify({
+                "success": False,
+                "error": f"Error calling Databricks endpoint: {str(e)}"
+            }), 500
+
+        try:
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError:
+            # HTTP error status codes (4xx/5xx)
+            return jsonify({
+                "success": False,
+                "error": f"Databricks returned HTTP {resp.status_code}: {resp.text}"
+            }), 500
+
+        # Try to parse JSON from Databricks
+        try:
+            result = resp.json()
+        except ValueError:
+            return jsonify({
+                "success": False,
+                "error": f"Databricks returned non-JSON response: {resp.text}"
+            }), 500
+
+        # Try to pull a prediction out of typical MLflow response shapes
+        if isinstance(result, dict) and "predictions" in result:
+            pred_value = result["predictions"][0]
+        else:
+            pred_value = result
+
+        return jsonify(
+            {
+                "success": True,
+                "prediction": pred_value,
+                "raw_response": result,
+            }
+        ), 200
+
+    except Exception as e:
+        # Catch-all for any other unexpected errors in our Flask code
+        return jsonify({
+            "success": False,
+            "error": f"Server-side error in /predict: {str(e)}"
+        }), 500
 
 
 # ============================================================
