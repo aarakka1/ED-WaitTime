@@ -2,16 +2,11 @@ import os
 import requests
 from flask import Flask, request, jsonify, render_template
 
-# ============================================================
-# Flask app - this is what gunicorn will run ("ED_WaitTime:app")
-# ============================================================
-
 app = Flask(__name__)
 
-# ============================================================
-# Environment variables (set these in Render)
-# ============================================================
-
+# =========================
+# Env vars (Render)
+# =========================
 DATABRICKS_HOST = os.getenv("DATABRICKS_HOST", "").strip()
 DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN", "").strip()
 MLFLOW_ENDPOINT_URL = os.getenv("MLFLOW_ENDPOINT_URL", "").strip()  # full URL or path
@@ -19,7 +14,7 @@ MLFLOW_ENDPOINT_URL = os.getenv("MLFLOW_ENDPOINT_URL", "").strip()  # full URL o
 if not MLFLOW_ENDPOINT_URL:
     raise RuntimeError("MLFLOW_ENDPOINT_URL must be set as an environment variable.")
 
-# Build the final serving URL
+# Build serving URL
 if MLFLOW_ENDPOINT_URL.startswith("http"):
     SERVE_URL = MLFLOW_ENDPOINT_URL
 else:
@@ -35,10 +30,9 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-# ============================================================
-# Defaults & Model features
-# ============================================================
-
+# =========================
+# Defaults & features
+# =========================
 DEFAULT_MEASURE_ID = "ED_1"
 DEFAULT_MEASURE_NAME = "Emergency Department Wait Time"
 
@@ -51,10 +45,6 @@ MODEL_FEATURES = [
     "Year",
     "Month",
 ]
-
-# ============================================================
-# Helpers
-# ============================================================
 
 def validate_input(data):
     required = ["State", "County/Parish", "ZIP Code", "Year", "Month"]
@@ -70,10 +60,8 @@ def validate_input(data):
 
     return True, ""
 
-
 def build_dataframe_split(data):
-    # Auto-fill defaults (UI should NOT ask user for these)
-    data = dict(data)  # avoid mutating the original request body
+    data = dict(data)  # don’t mutate request body
     data["Measure ID"] = DEFAULT_MEASURE_ID
     data["Measure Name"] = DEFAULT_MEASURE_NAME
 
@@ -84,32 +72,22 @@ def build_dataframe_split(data):
         else:
             row.append(str(data[f]))
 
-    return {
-        "dataframe_split": {
-            "columns": MODEL_FEATURES,
-            "data": [row],
-        }
-    }
+    return {"dataframe_split": {"columns": MODEL_FEATURES, "data": [row]}}
 
-# ============================================================
+# =========================
 # Routes
-# ============================================================
-
+# =========================
 @app.route("/", methods=["GET"])
 def home():
-    # If you want to pass a name into the template:
-    # return render_template("index.html", app_name="ED WaitTime")
     return render_template("index.html")
-
 
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
         "status": "ok",
         "features": MODEL_FEATURES,
-        "serve_url_configured": bool(SERVE_URL),
+        "serve_url": SERVE_URL,  # helps you confirm URL quickly
     })
-
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -124,39 +102,36 @@ def predict():
 
         payload = build_dataframe_split(body)
 
-        # Call Databricks/MLflow serving endpoint
         try:
             resp = requests.post(
                 SERVE_URL,
                 headers=HEADERS,
-                json=payload,      # cleaner than data=json.dumps(...)
-                timeout=45         # more realistic than 15s for serving endpoints
+                json=payload,
+                timeout=60
             )
         except requests.exceptions.Timeout:
             return jsonify({"success": False, "error": "Databricks request timed out."}), 504
         except requests.exceptions.RequestException as e:
             return jsonify({"success": False, "error": f"Request error calling Databricks: {str(e)}"}), 502
 
-        # Bubble up Databricks errors (super helpful for debugging)
+        # IMPORTANT: show Databricks error details
         if resp.status_code != 200:
             return jsonify({
                 "success": False,
                 "error": "Databricks returned an error",
                 "status_code": resp.status_code,
-                "databricks_response": resp.text[:1000],
+                "databricks_response": resp.text[:1500]
             }), 500
 
-        # Parse JSON safely
         try:
             result = resp.json()
         except Exception:
             return jsonify({
                 "success": False,
                 "error": "Databricks returned non-JSON response",
-                "databricks_response": resp.text[:1000],
+                "databricks_response": resp.text[:1500]
             }), 500
 
-        # Extract prediction
         if isinstance(result, dict) and "predictions" in result and isinstance(result["predictions"], list):
             pred = result["predictions"][0]
         else:
@@ -166,7 +141,6 @@ def predict():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
