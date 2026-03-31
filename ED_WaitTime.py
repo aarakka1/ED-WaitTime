@@ -1,5 +1,6 @@
 import os
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
@@ -30,28 +31,25 @@ HEADERS = {
 }
 
 # =========================
-# Measure mapping
+# Patient type → measure mapping
 # =========================
-MEASURE_MAP = {
-    "Overall ED wait time":          ("OP_18b", "Average (median) time patients spent in the emergency department before leaving from the visit A lower number of minutes is better"),
-    "Wait time (incl. transfers)":   ("OP_18a", "Average (median) time all patients spent in the emergency department before leaving from the visit, including psychiatric/mental health patients and patients who were transferred to another facility. A lower number of minutes is better"),
-    "Wait time - psych patients":    ("OP_18c", "Average (median) time patients spent in the emergency department before leaving from the visit- Psychiatric/Mental Health Patients.  A lower number of minutes is better"),
-    "Wait time - transfer patients": ("OP_18d", "Average (median) time transfer patients spent in the emergency department before leaving from the visit. A lower number of minutes is better"),
-    "ED volume":                     ("EDV",    "Emergency department volume"),
-    "Left before being seen":        ("OP_22",  "Left before being seen"),
-    "Head CT result time":           ("OP_23",  "Head CT results"),
+PATIENT_TYPE_MAP = {
+    "General":            ("OP_18b", "Average (median) time patients spent in the emergency department before leaving from the visit A lower number of minutes is better"),
+    "Transfer":           ("OP_18a", "Average (median) time all patients spent in the emergency department before leaving from the visit, including psychiatric/mental health patients and patients who were transferred to another facility. A lower number of minutes is better"),
+    "Psych / Mental Health": ("OP_18c", "Average (median) time patients spent in the emergency department before leaving from the visit- Psychiatric/Mental Health Patients.  A lower number of minutes is better"),
 }
 
-DEFAULT_MEASURE = "Overall ED wait time"
+# Dashboard metrics (run in parallel after main prediction)
+DASHBOARD_MEASURES = {
+    "ED Volume":             ("EDV",    "Emergency department volume"),
+    "Left Before Being Seen":("OP_22",  "Left before being seen"),
+    "Head CT Result Time":   ("OP_23",  "Head CT results"),
+    "Transfer Wait Time":    ("OP_18d", "Average (median) time transfer patients spent in the emergency department before leaving from the visit. A lower number of minutes is better"),
+}
 
 MODEL_FEATURES = [
-    "State",
-    "County/Parish",
-    "Measure ID",
-    "Measure Name",
-    "ZIP Code",
-    "Year",
-    "Month",
+    "State", "County/Parish", "Measure ID", "Measure Name",
+    "ZIP Code", "Year", "Month",
 ]
 
 # =========================
@@ -69,10 +67,7 @@ def validate_input(data):
             return False, f"Invalid numeric value for: {f}"
     return True, ""
 
-def build_payload(data):
-    measure_label = data.get("Measure", DEFAULT_MEASURE)
-    measure_id, measure_name = MEASURE_MAP.get(measure_label, MEASURE_MAP[DEFAULT_MEASURE])
-
+def build_payload(data, measure_id, measure_name):
     row = [
         str(data["State"]),
         str(data["County/Parish"]),
@@ -83,6 +78,16 @@ def build_payload(data):
         float(data["Month"]),
     ]
     return {"dataframe_split": {"columns": MODEL_FEATURES, "data": [row]}}
+
+def call_model(data, measure_id, measure_name):
+    payload = build_payload(data, measure_id, measure_name)
+    resp = requests.post(SERVE_URL, headers=HEADERS, json=payload, timeout=120)
+    if resp.status_code != 200:
+        return None
+    result = resp.json()
+    if isinstance(result, dict) and "predictions" in result:
+        return round(float(result["predictions"][0]), 1)
+    return None
 
 # =========================
 # Routes
@@ -97,7 +102,7 @@ def health():
         "status": "ok",
         "serve_url": SERVE_URL,
         "features": MODEL_FEATURES,
-        "measures": list(MEASURE_MAP.keys()),
+        "patient_types": list(PATIENT_TYPE_MAP.keys()),
     })
 
 @app.route("/predict", methods=["POST"])
@@ -111,43 +116,35 @@ def predict():
         if not valid:
             return jsonify({"success": False, "error": msg}), 400
 
-        payload = build_payload(body)
+        # Main prediction based on patient type
+        patient_type = body.get("PatientType", "General")
+        measure_id, measure_name = PATIENT_TYPE_MAP.get(
+            patient_type, PATIENT_TYPE_MAP["General"]
+        )
+        main_pred = call_model(body, measure_id, measure_name)
+        if main_pred is None:
+            return jsonify({"success": False, "error": "Model call failed for main prediction"}), 500
 
-        try:
-            resp = requests.post(
-                SERVE_URL,
-                headers=HEADERS,
-                json=payload,
-                timeout=60
-            )
-        except requests.exceptions.Timeout:
-            return jsonify({"success": False, "error": "Databricks request timed out."}), 504
-        except requests.exceptions.RequestException as e:
-            return jsonify({"success": False, "error": f"Request error: {str(e)}"}), 502
+        # Dashboard metrics in parallel
+        dashboard = {}
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {
+                executor.submit(call_model, body, mid, mname): label
+                for label, (mid, mname) in DASHBOARD_MEASURES.items()
+            }
+            for future in as_completed(futures):
+                label = futures[future]
+                try:
+                    dashboard[label] = future.result()
+                except Exception:
+                    dashboard[label] = None
 
-        if resp.status_code != 200:
-            return jsonify({
-                "success": False,
-                "error": "Databricks returned an error",
-                "status_code": resp.status_code,
-                "databricks_response": resp.text[:1500]
-            }), 500
-
-        try:
-            result = resp.json()
-        except Exception:
-            return jsonify({
-                "success": False,
-                "error": "Databricks returned a non-JSON response",
-                "databricks_response": resp.text[:1500]
-            }), 500
-
-        if isinstance(result, dict) and "predictions" in result:
-            pred = result["predictions"][0]
-        else:
-            pred = result
-
-        return jsonify({"success": True, "prediction": pred})
+        return jsonify({
+            "success": True,
+            "prediction": main_pred,
+            "patient_type": patient_type,
+            "dashboard": dashboard,
+        })
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
