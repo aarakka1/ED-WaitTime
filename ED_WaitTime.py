@@ -9,12 +9,11 @@ app = Flask(__name__)
 # =========================
 DATABRICKS_HOST = os.getenv("DATABRICKS_HOST", "").strip()
 DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN", "").strip()
-MLFLOW_ENDPOINT_URL = os.getenv("MLFLOW_ENDPOINT_URL", "").strip()  # full URL or path
+MLFLOW_ENDPOINT_URL = os.getenv("MLFLOW_ENDPOINT_URL", "").strip()
 
 if not MLFLOW_ENDPOINT_URL:
     raise RuntimeError("MLFLOW_ENDPOINT_URL must be set as an environment variable.")
 
-# Build serving URL
 if MLFLOW_ENDPOINT_URL.startswith("http"):
     SERVE_URL = MLFLOW_ENDPOINT_URL
 else:
@@ -31,10 +30,19 @@ HEADERS = {
 }
 
 # =========================
-# Defaults & features
+# Measure mapping
 # =========================
-DEFAULT_MEASURE_ID = "ED_1"
-DEFAULT_MEASURE_NAME = "Emergency Department Wait Time"
+MEASURE_MAP = {
+    "Overall ED wait time":          ("OP_18b", "Average (median) time patients spent in the emergency department before leaving from the visit A lower number of minutes is better"),
+    "Wait time (incl. transfers)":   ("OP_18a", "Average (median) time all patients spent in the emergency department before leaving from the visit, including psychiatric/mental health patients and patients who were transferred to another facility. A lower number of minutes is better"),
+    "Wait time - psych patients":    ("OP_18c", "Average (median) time patients spent in the emergency department before leaving from the visit- Psychiatric/Mental Health Patients.  A lower number of minutes is better"),
+    "Wait time - transfer patients": ("OP_18d", "Average (median) time transfer patients spent in the emergency department before leaving from the visit. A lower number of minutes is better"),
+    "ED volume":                     ("EDV",    "Emergency department volume"),
+    "Left before being seen":        ("OP_22",  "Left before being seen"),
+    "Head CT result time":           ("OP_23",  "Head CT results"),
+}
+
+DEFAULT_MEASURE = "Overall ED wait time"
 
 MODEL_FEATURES = [
     "State",
@@ -46,32 +54,34 @@ MODEL_FEATURES = [
     "Month",
 ]
 
+# =========================
+# Helpers
+# =========================
 def validate_input(data):
     required = ["State", "County/Parish", "ZIP Code", "Year", "Month"]
     missing = [f for f in required if f not in data or data[f] in (None, "", [])]
     if missing:
-        return False, f"Missing required features: {', '.join(missing)}"
-
+        return False, f"Missing required fields: {', '.join(missing)}"
     for f in ["ZIP Code", "Year", "Month"]:
         try:
             float(data[f])
         except Exception:
-            return False, f"Invalid numeric value: {f}"
-
+            return False, f"Invalid numeric value for: {f}"
     return True, ""
 
-def build_dataframe_split(data):
-    data = dict(data)  # don’t mutate request body
-    data["Measure ID"] = DEFAULT_MEASURE_ID
-    data["Measure Name"] = DEFAULT_MEASURE_NAME
+def build_payload(data):
+    measure_label = data.get("Measure", DEFAULT_MEASURE)
+    measure_id, measure_name = MEASURE_MAP.get(measure_label, MEASURE_MAP[DEFAULT_MEASURE])
 
-    row = []
-    for f in MODEL_FEATURES:
-        if f in ["ZIP Code", "Year", "Month"]:
-            row.append(float(data[f]))
-        else:
-            row.append(str(data[f]))
-
+    row = [
+        str(data["State"]),
+        str(data["County/Parish"]),
+        measure_id,
+        measure_name,
+        float(data["ZIP Code"]),
+        float(data["Year"]),
+        float(data["Month"]),
+    ]
     return {"dataframe_split": {"columns": MODEL_FEATURES, "data": [row]}}
 
 # =========================
@@ -85,8 +95,9 @@ def home():
 def health():
     return jsonify({
         "status": "ok",
+        "serve_url": SERVE_URL,
         "features": MODEL_FEATURES,
-        "serve_url": SERVE_URL,  # helps you confirm URL quickly
+        "measures": list(MEASURE_MAP.keys()),
     })
 
 @app.route("/predict", methods=["POST"])
@@ -100,7 +111,7 @@ def predict():
         if not valid:
             return jsonify({"success": False, "error": msg}), 400
 
-        payload = build_dataframe_split(body)
+        payload = build_payload(body)
 
         try:
             resp = requests.post(
@@ -112,9 +123,8 @@ def predict():
         except requests.exceptions.Timeout:
             return jsonify({"success": False, "error": "Databricks request timed out."}), 504
         except requests.exceptions.RequestException as e:
-            return jsonify({"success": False, "error": f"Request error calling Databricks: {str(e)}"}), 502
+            return jsonify({"success": False, "error": f"Request error: {str(e)}"}), 502
 
-        # IMPORTANT: show Databricks error details
         if resp.status_code != 200:
             return jsonify({
                 "success": False,
@@ -128,11 +138,11 @@ def predict():
         except Exception:
             return jsonify({
                 "success": False,
-                "error": "Databricks returned non-JSON response",
+                "error": "Databricks returned a non-JSON response",
                 "databricks_response": resp.text[:1500]
             }), 500
 
-        if isinstance(result, dict) and "predictions" in result and isinstance(result["predictions"], list):
+        if isinstance(result, dict) and "predictions" in result:
             pred = result["predictions"][0]
         else:
             pred = result
@@ -142,6 +152,9 @@ def predict():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# =========================
+# Entrypoint
+# =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=True)
