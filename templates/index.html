@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Emergency Department Wait Time</title>
+  <title>Emergency Department Wait Time Prediction</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -10,260 +10,204 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
         "Inter", "Segoe UI", sans-serif;
     }
-    .fade-in {
-      animation: fadeIn 0.4s ease-in-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    select option { background-color: #0f172a; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center py-10">
+  <div class="w-full max-w-3xl mx-auto px-4">
 
-  <!-- Header -->
-  <div class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-      <span class="text-sm font-semibold text-slate-100">Emergency Wait Time</span>
-    </div>
-    <span class="text-[11px] text-slate-500">Powered by Databricks MLflow</span>
-  </div>
-
-  <div class="max-w-3xl mx-auto px-4 py-10">
-
-    <!-- Hero -->
-    <div class="mb-8">
-      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight text-slate-100">
-        Emergency Wait Time
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight text-white">
+        Emergency Department Wait Time
       </h1>
-      <p class="mt-2 text-slate-400 text-sm max-w-xl">
-        Enter your location and visit details to get a predicted Emergency Department
-        wait time and a full scorecard of nearby hospitals — powered by a live ML model.
+      <p class="mt-2 text-sm text-slate-400">
+        Enter your location and visit details to get a predicted wait time and compare nearby hospitals — powered by a live ML model on Databricks.
       </p>
     </div>
 
     <!-- Form card -->
-    <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 mb-6">
-      <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Your Location & Visit</p>
+    <div class="bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-800 px-8 py-6">
+      <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-4">Your Details</p>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">State
-            <span class="text-slate-500 font-normal ml-1">2-letter code</span>
-          </label>
-          <input id="State" type="text" placeholder="e.g. AZ" maxlength="2"
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-sm uppercase
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-                   placeholder:normal-case placeholder:text-slate-600" />
+          <label class="block text-xs font-medium text-slate-300 mb-1">State</label>
+          <input id="State" type="text" placeholder="e.g. AZ"
+            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
+          <p class="text-[10px] text-slate-500 mt-1">2-letter abbreviation e.g. AZ, TX, NY</p>
         </div>
 
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">County / Parish</label>
           <input id="CountyParish" type="text" placeholder="e.g. Maricopa"
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-                   placeholder:text-slate-600" />
+            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
+          <p class="text-[10px] text-slate-500 mt-1">Enter your county name</p>
         </div>
 
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">ZIP Code</label>
           <input id="ZipCode" type="number" inputmode="numeric" placeholder="e.g. 85001"
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-                   placeholder:text-slate-600" />
+            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
         </div>
 
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">Year</label>
           <input id="Year" type="number" inputmode="numeric" placeholder="e.g. 2024"
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-                   placeholder:text-slate-600" />
+            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
         </div>
 
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">Month</label>
           <input id="Month" type="number" min="1" max="12" inputmode="numeric" placeholder="1 – 12"
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-                   placeholder:text-slate-600" />
+            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
         </div>
 
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">Visit / Patient Type</label>
           <select id="PatientType"
-            class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400">
             <option value="General">General</option>
             <option value="Transfer">Transfer</option>
             <option value="Psych / Mental Health">Psych / Mental Health</option>
           </select>
+          <p class="text-[10px] text-slate-500 mt-1">Select the type of visit</p>
         </div>
 
       </div>
 
       <!-- Buttons -->
-      <div class="mt-5 flex items-center gap-3">
+      <div class="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <button id="submit-btn"
-          class="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400
-                 text-slate-950 text-sm font-semibold px-5 py-2.5
-                 shadow-lg shadow-emerald-500/30 transition-all
-                 hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 5l7 7-7 7"/>
-          </svg>
+          class="inline-flex items-center justify-center rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 text-sm font-semibold px-5 py-2.5 shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
           Predict Wait Time
         </button>
         <button id="reset-btn"
-          class="rounded-xl border border-slate-700 text-slate-400 text-xs px-4 py-2.5
-                 hover:bg-slate-800 hover:text-slate-200 transition">
-          Clear
+          class="inline-flex items-center justify-center rounded-xl border border-slate-700 text-slate-300 text-xs px-4 py-2.5 hover:bg-slate-800 transition-all">
+          Clear Form
         </button>
-        <span id="loading-text" class="hidden text-xs text-slate-500 animate-pulse">
-          Contacting Databricks…
+        <span class="text-[11px] text-slate-500 sm:ml-auto">
+          Endpoint: <span class="font-mono text-emerald-400">/predict</span>
         </span>
       </div>
     </div>
 
     <!-- Error -->
-    <div id="error-card" class="hidden mb-6 fade-in">
-      <div class="rounded-2xl border border-red-500/30 bg-red-950/30 px-5 py-4 flex gap-3 items-start">
-        <svg class="w-4 h-4 text-red-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <div>
-          <p class="text-xs font-semibold text-red-300 uppercase tracking-wide">Error</p>
-          <p id="error-message" class="mt-0.5 text-sm text-red-100"></p>
-        </div>
+    <div id="error-card" class="mt-4 hidden">
+      <div class="rounded-2xl border border-red-500/30 bg-red-950/40 px-5 py-4">
+        <p class="text-xs font-semibold tracking-wide text-red-400 uppercase mb-1">Error</p>
+        <p id="error-message" class="text-sm text-red-200"></p>
       </div>
     </div>
 
     <!-- Results -->
-    <div id="results-section" class="hidden fade-in space-y-5">
+    <div id="results-section" class="hidden">
 
       <!-- Predicted wait time -->
-      <div class="bg-slate-900/60 border border-emerald-500/20 rounded-2xl px-6 py-5">
-        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Predicted Wait Time</p>
+      <div class="mt-4 rounded-2xl border border-emerald-500/20 bg-slate-900/80 px-6 py-5">
+        <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Predicted Wait Time</p>
         <div class="mt-2 flex items-end gap-3">
-          <p id="prediction-value" class="text-5xl font-semibold text-emerald-400 leading-none"></p>
+          <p id="prediction-value" class="text-5xl font-semibold text-emerald-400"></p>
           <p id="prediction-minutes" class="text-lg text-emerald-300/60 mb-1"></p>
         </div>
-        <div class="mt-3 flex items-center gap-2">
-          <span id="patient-type-badge"
-            class="text-[11px] font-medium bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg">
-          </span>
-          <span id="wait-indicator" class="text-[11px] font-medium px-2.5 py-1 rounded-lg"></span>
-        </div>
+        <p id="prediction-type" class="mt-2 text-xs text-slate-500"></p>
       </div>
 
-      <!-- Scorecard -->
-      <div>
-        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">ED Scorecard</p>
+      <!-- ED Scorecard -->
+      <div class="mt-4">
+        <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-3">ED Scorecard for This Location</p>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
 
-          <div class="bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3">
-            <p class="text-[11px] text-slate-500">ED Volume</p>
-            <p id="dash-volume" class="mt-1 text-xl font-semibold text-slate-100">—</p>
-            <p class="text-[10px] text-slate-600 mt-0.5">volume score</p>
+          <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
+            <p class="text-[11px] text-slate-500 mb-1">ED Volume</p>
+            <p id="dash-volume" class="text-xl font-semibold text-slate-100">—</p>
+            <p class="text-[10px] text-slate-600 mt-1">volume score</p>
           </div>
 
-          <div class="bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3">
-            <p class="text-[11px] text-slate-500">Left Before Seen</p>
-            <p id="dash-lbs" class="mt-1 text-xl font-semibold text-slate-100">—</p>
-            <p class="text-[10px] text-slate-600 mt-0.5">% of patients</p>
+          <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
+            <p class="text-[11px] text-slate-500 mb-1">Left Before Seen</p>
+            <p id="dash-lbs" class="text-xl font-semibold text-slate-100">—</p>
+            <p class="text-[10px] text-slate-600 mt-1">% of patients</p>
           </div>
 
-          <div class="bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3">
-            <p class="text-[11px] text-slate-500">Head CT Time</p>
-            <p id="dash-ct" class="mt-1 text-xl font-semibold text-slate-100">—</p>
-            <p class="text-[10px] text-slate-600 mt-0.5">minutes</p>
+          <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
+            <p class="text-[11px] text-slate-500 mb-1">Head CT Time</p>
+            <p id="dash-ct" class="text-xl font-semibold text-slate-100">—</p>
+            <p class="text-[10px] text-slate-600 mt-1">minutes</p>
           </div>
 
-          <div class="bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3">
-            <p class="text-[11px] text-slate-500">Transfer Wait</p>
-            <p id="dash-transfer" class="mt-1 text-xl font-semibold text-slate-100">—</p>
-            <p class="text-[10px] text-slate-600 mt-0.5">minutes</p>
+          <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
+            <p class="text-[11px] text-slate-500 mb-1">Transfer Wait</p>
+            <p id="dash-transfer" class="text-xl font-semibold text-slate-100">—</p>
+            <p class="text-[10px] text-slate-600 mt-1">minutes</p>
           </div>
 
         </div>
       </div>
 
       <!-- Nearby hospitals -->
-      <div>
-        <div class="flex items-center justify-between mb-3">
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-            Nearby EDs — Ranked by Wait Time
-          </p>
-          <p id="nearby-count" class="text-[11px] text-slate-500"></p>
-        </div>
+      <div id="nearby-card" class="mt-4 hidden">
+        <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-3">
+          Nearby Emergency Departments — Ranked by Wait Time
+        </p>
         <div class="rounded-2xl border border-slate-800 overflow-hidden">
           <table class="w-full text-sm">
             <thead>
-              <tr class="bg-slate-900 border-b border-slate-800">
-                <th class="text-left px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Hospital</th>
-                <th class="text-left px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide hidden md:table-cell">City</th>
-                <th class="text-left px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide hidden md:table-cell">Phone</th>
-                <th class="text-right px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Wait</th>
+              <tr class="bg-slate-900 text-[11px] text-slate-500 uppercase border-b border-slate-800">
+                <th class="text-left px-4 py-3 font-medium">Hospital</th>
+                <th class="text-left px-4 py-3 font-medium hidden md:table-cell">City</th>
+                <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Phone</th>
+                <th class="text-right px-4 py-3 font-medium">Wait</th>
               </tr>
             </thead>
-            <tbody id="nearby-tbody" class="divide-y divide-slate-800/60"></tbody>
+            <tbody id="nearby-tbody" class="divide-y divide-slate-800/60 bg-slate-900/50">
+            </tbody>
           </table>
         </div>
         <p class="mt-2 text-[10px] text-slate-600">
-          Based on most recent measured data in the dataset. Sorted by shortest wait time.
+          Based on most recent measured data from your dataset. Sorted by shortest wait time.
         </p>
       </div>
 
     </div>
-  </div>
 
-  <!-- Footer -->
-  <div class="border-t border-slate-800 mt-10 px-6 py-4 text-center">
-    <p class="text-[11px] text-slate-600">
-      Powered by Databricks MLflow &amp; Flask • Deployed on Render
+    <p class="mt-6 text-[11px] text-center text-slate-600">
+      Powered by Databricks MLflow &amp; Flask &bull; Deployed on Render
     </p>
   </div>
 
   <script>
-    const submitBtn      = document.getElementById("submit-btn");
-    const resetBtn       = document.getElementById("reset-btn");
-    const loadingText    = document.getElementById("loading-text");
-    const resultsSection = document.getElementById("results-section");
-    const errorCard      = document.getElementById("error-card");
+    const submitBtn     = document.getElementById("submit-btn");
+    const resetBtn      = document.getElementById("reset-btn");
+    const resultsSection= document.getElementById("results-section");
+    const nearbyCard    = document.getElementById("nearby-card");
+    const errorCard     = document.getElementById("error-card");
 
     function setLoading(on) {
       submitBtn.disabled = on;
-      loadingText.classList.toggle("hidden", !on);
-      submitBtn.querySelector("svg").style.display = on ? "none" : "";
-      submitBtn.childNodes[submitBtn.childNodes.length - 1].textContent =
-        on ? " Predicting…" : " Predict Wait Time";
+      submitBtn.textContent = on ? "Predicting..." : "Predict Wait Time";
     }
 
-    function clearResults() {
+    function clearAll() {
       resultsSection.classList.add("hidden");
+      nearbyCard.classList.add("hidden");
       errorCard.classList.add("hidden");
+      document.getElementById("nearby-tbody").innerHTML = "";
     }
 
     function waitColor(mins) {
       if (mins === null || mins === undefined) return "text-slate-400";
-      if (mins < 120) return "text-emerald-400";
-      if (mins < 200) return "text-amber-400";
+      if (mins < 120)  return "text-emerald-400";
+      if (mins < 200)  return "text-amber-400";
       return "text-red-400";
     }
 
-    function waitIndicator(mins) {
-      if (mins === null || mins === undefined) return { text: "", cls: "" };
-      if (mins < 120) return { text: "Short wait", cls: "bg-emerald-500/15 text-emerald-400" };
-      if (mins < 200) return { text: "Moderate wait", cls: "bg-amber-500/15 text-amber-400" };
-      return { text: "Long wait", cls: "bg-red-500/15 text-red-400" };
+    function lbsColor(val) {
+      if (val === null || val === undefined) return "text-slate-100";
+      if (val < 2)  return "text-emerald-400";
+      if (val < 5)  return "text-amber-400";
+      return "text-red-400";
     }
 
     resetBtn.addEventListener("click", (e) => {
@@ -274,21 +218,35 @@
       document.getElementById("Year").value = "";
       document.getElementById("Month").value = "";
       document.getElementById("PatientType").value = "General";
-      clearResults();
+      clearAll();
     });
 
     submitBtn.addEventListener("click", async (e) => {
       e.preventDefault();
-      clearResults();
+      clearAll();
+
+      const state   = document.getElementById("State").value.trim();
+      const county  = document.getElementById("CountyParish").value.trim();
+      const zip     = document.getElementById("ZipCode").value.trim();
+      const year    = document.getElementById("Year").value.trim();
+      const month   = document.getElementById("Month").value.trim();
+      const ptype   = document.getElementById("PatientType").value;
+
+      if (!state || !county || !zip || !year || !month) {
+        document.getElementById("error-message").textContent = "Please fill in all fields before predicting.";
+        errorCard.classList.remove("hidden");
+        return;
+      }
+
       setLoading(true);
 
       const payload = {
-        "State":         document.getElementById("State").value.trim().toUpperCase(),
-        "County/Parish": document.getElementById("CountyParish").value.trim(),
-        "ZIP Code":      document.getElementById("ZipCode").value,
-        "Year":          document.getElementById("Year").value,
-        "Month":         document.getElementById("Month").value,
-        "PatientType":   document.getElementById("PatientType").value,
+        "State":         state,
+        "County/Parish": county,
+        "ZIP Code":      zip,
+        "Year":          year,
+        "Month":         month,
+        "PatientType":   ptype,
       };
 
       try {
@@ -301,55 +259,40 @@
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          document.getElementById("error-message").textContent =
-            data.error || "Prediction failed. Please check your inputs and try again.";
+          document.getElementById("error-message").textContent = data.error || "Prediction failed.";
           errorCard.classList.remove("hidden");
         } else {
           // Main prediction
-          const pred = data.prediction;
-          document.getElementById("prediction-value").textContent = pred.toFixed(1);
-          document.getElementById("prediction-minutes").textContent = Math.round(pred) + " min";
-          document.getElementById("patient-type-badge").textContent = "Visit type: " + data.patient_type;
-
-          const ind = waitIndicator(pred);
-          const indEl = document.getElementById("wait-indicator");
-          indEl.textContent = ind.text;
-          indEl.className = `text-[11px] font-medium px-2.5 py-1 rounded-lg ${ind.cls}`;
+          document.getElementById("prediction-value").textContent = data.prediction.toFixed(1);
+          document.getElementById("prediction-minutes").textContent = Math.round(data.prediction) + " min";
+          document.getElementById("prediction-type").textContent = "Visit type: " + data.patient_type;
 
           // Scorecard
           const d = data.dashboard;
           document.getElementById("dash-volume").textContent   = d["ED Volume"]              ?? "N/A";
+          document.getElementById("dash-lbs").className        = "text-xl font-semibold " + lbsColor(d["Left Before Being Seen"]);
           document.getElementById("dash-lbs").textContent      = d["Left Before Being Seen"] ?? "N/A";
           document.getElementById("dash-ct").textContent       = d["Head CT Result Time"]    ?? "N/A";
           document.getElementById("dash-transfer").textContent = d["Transfer Wait Time"]     ?? "N/A";
 
-          // Color left-before-seen
-          const lbs = parseFloat(d["Left Before Being Seen"]);
-          const lbsEl = document.getElementById("dash-lbs");
-          if (!isNaN(lbs)) {
-            lbsEl.className = `mt-1 text-xl font-semibold ${
-              lbs < 2 ? "text-emerald-400" : lbs < 5 ? "text-amber-400" : "text-red-400"
-            }`;
-          }
+          resultsSection.classList.remove("hidden");
 
-          // Nearby table
+          // Nearby hospitals
           const tbody = document.getElementById("nearby-tbody");
-          tbody.innerHTML = "";
           if (data.nearby && data.nearby.length > 0) {
-            document.getElementById("nearby-count").textContent =
-              data.nearby.length + " hospitals found";
             data.nearby.forEach((h, i) => {
               const color = waitColor(h.wait);
               const fastBadge = i === 0
-                ? `<span class="inline-block text-[10px] font-semibold bg-emerald-500/20
-                              text-emerald-300 px-2 py-0.5 rounded-md mr-2">Fastest</span>`
+                ? `<span class="inline-block bg-emerald-500/20 text-emerald-300 text-[10px] font-medium px-2 py-0.5 rounded-md mr-2">Fastest</span>`
                 : "";
               tbody.innerHTML += `
                 <tr class="hover:bg-slate-800/30 transition-colors">
                   <td class="px-4 py-3">
-                    ${fastBadge}
-                    <span class="font-medium text-slate-100 text-sm">${h.name}</span>
-                    <span class="block text-[11px] text-slate-500 mt-0.5 md:hidden">${h.city} • ${h.phone}</span>
+                    <div class="flex items-center flex-wrap gap-1">
+                      ${fastBadge}
+                      <span class="font-medium text-slate-100 text-sm">${h.name}</span>
+                    </div>
+                    <span class="block text-[11px] text-slate-500 mt-0.5 md:hidden">${h.city} · ${h.phone}</span>
                   </td>
                   <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.city}</td>
                   <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.phone}</td>
@@ -358,21 +301,11 @@
                   </td>
                 </tr>`;
             });
-          } else {
-            document.getElementById("nearby-count").textContent = "No hospitals found";
-            tbody.innerHTML = `
-              <tr>
-                <td colspan="4" class="px-4 py-6 text-center text-slate-500 text-sm">
-                  No hospital data found for this location.
-                </td>
-              </tr>`;
+            nearbyCard.classList.remove("hidden");
           }
-
-          resultsSection.classList.remove("hidden");
         }
       } catch (err) {
-        document.getElementById("error-message").textContent =
-          "Network error — please try again in a moment.";
+        document.getElementById("error-message").textContent = "Network error while calling /predict.";
         errorCard.classList.remove("hidden");
       } finally {
         setLoading(false);
