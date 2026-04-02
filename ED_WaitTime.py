@@ -1,5 +1,6 @@
 import os
 import requests
+import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify, render_template
 
@@ -31,20 +32,29 @@ HEADERS = {
 }
 
 # =========================
+# Load dataset once at startup
+# =========================
+df_raw = pd.read_excel("FinalDS.xlsx")
+df_ed = df_raw[df_raw["Condition"] == "Emergency Department"].copy()
+df_ed["Score"] = pd.to_numeric(df_ed["Score"], errors="coerce")
+df_ed["Start Date"] = pd.to_datetime(df_ed["Start Date"], errors="coerce")
+df_ed["Year"] = df_ed["Start Date"].dt.year
+df_ed["Month"] = df_ed["Start Date"].dt.month
+
+# =========================
 # Patient type → measure mapping
 # =========================
 PATIENT_TYPE_MAP = {
-    "General":            ("OP_18b", "Average (median) time patients spent in the emergency department before leaving from the visit A lower number of minutes is better"),
-    "Transfer":           ("OP_18a", "Average (median) time all patients spent in the emergency department before leaving from the visit, including psychiatric/mental health patients and patients who were transferred to another facility. A lower number of minutes is better"),
+    "General":               ("OP_18b", "Average (median) time patients spent in the emergency department before leaving from the visit A lower number of minutes is better"),
+    "Transfer":              ("OP_18a", "Average (median) time all patients spent in the emergency department before leaving from the visit, including psychiatric/mental health patients and patients who were transferred to another facility. A lower number of minutes is better"),
     "Psych / Mental Health": ("OP_18c", "Average (median) time patients spent in the emergency department before leaving from the visit- Psychiatric/Mental Health Patients.  A lower number of minutes is better"),
 }
 
-# Dashboard metrics (run in parallel after main prediction)
 DASHBOARD_MEASURES = {
-    "ED Volume":             ("EDV",    "Emergency department volume"),
-    "Left Before Being Seen":("OP_22",  "Left before being seen"),
-    "Head CT Result Time":   ("OP_23",  "Head CT results"),
-    "Transfer Wait Time":    ("OP_18d", "Average (median) time transfer patients spent in the emergency department before leaving from the visit. A lower number of minutes is better"),
+    "ED Volume":              ("EDV",    "Emergency department volume"),
+    "Left Before Being Seen": ("OP_22",  "Left before being seen"),
+    "Head CT Result Time":    ("OP_23",  "Head CT results"),
+    "Transfer Wait Time":     ("OP_18d", "Average (median) time transfer patients spent in the emergency department before leaving from the visit. A lower number of minutes is better"),
 }
 
 MODEL_FEATURES = [
@@ -89,6 +99,44 @@ def call_model(data, measure_id, measure_name):
         return round(float(result["predictions"][0]), 1)
     return None
 
+def get_nearby_hospitals(state, county, patient_type="General"):
+    measure_id = PATIENT_TYPE_MAP.get(patient_type, PATIENT_TYPE_MAP["General"])[0]
+
+    nearby = df_ed[
+        (df_ed["State"].str.upper() == state.upper()) &
+        (df_ed["County/Parish"].str.upper() == county.upper()) &
+        (df_ed["Measure ID"] == measure_id)
+    ].copy()
+
+    # Fall back to state-wide if no county match
+    if nearby.empty:
+        nearby = df_ed[
+            (df_ed["State"].str.upper() == state.upper()) &
+            (df_ed["Measure ID"] == measure_id)
+        ].copy()
+
+    if nearby.empty:
+        return []
+
+    # Keep most recent year per facility
+    nearby = nearby.sort_values("Year", ascending=False)
+    nearby = nearby.drop_duplicates(subset=["Facility Name"])
+    nearby = nearby.dropna(subset=["Score"])
+    nearby = nearby.sort_values("Score", ascending=True).head(10)
+
+    results = []
+    for _, row in nearby.iterrows():
+        results.append({
+            "name":     row["Facility Name"].title(),
+            "address":  row["Address"].title() if pd.notna(row["Address"]) else "—",
+            "city":     row["City/Town"].title() if pd.notna(row["City/Town"]) else "—",
+            "zip":      str(int(row["ZIP Code"])) if pd.notna(row["ZIP Code"]) else "—",
+            "phone":    row["Telephone Number"] if pd.notna(row["Telephone Number"]) else "—",
+            "wait":     round(float(row["Score"]), 1) if pd.notna(row["Score"]) else None,
+            "county":   row["County/Parish"].title() if pd.notna(row["County/Parish"]) else "—",
+        })
+    return results
+
 # =========================
 # Routes
 # =========================
@@ -103,6 +151,7 @@ def health():
         "serve_url": SERVE_URL,
         "features": MODEL_FEATURES,
         "patient_types": list(PATIENT_TYPE_MAP.keys()),
+        "facilities_loaded": int(df_ed["Facility Name"].nunique()),
     })
 
 @app.route("/predict", methods=["POST"])
@@ -116,34 +165,43 @@ def predict():
         if not valid:
             return jsonify({"success": False, "error": msg}), 400
 
-        # Main prediction based on patient type
         patient_type = body.get("PatientType", "General")
         measure_id, measure_name = PATIENT_TYPE_MAP.get(
             patient_type, PATIENT_TYPE_MAP["General"]
         )
-        main_pred = call_model(body, measure_id, measure_name)
-        if main_pred is None:
-            return jsonify({"success": False, "error": "Model call failed for main prediction"}), 500
 
-        # Dashboard metrics in parallel
-        dashboard = {}
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        # Run main prediction + dashboard metrics in parallel
+        all_calls = {"__main__": (measure_id, measure_name)}
+        all_calls.update(DASHBOARD_MEASURES)
+
+        results = {}
+        with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {
                 executor.submit(call_model, body, mid, mname): label
-                for label, (mid, mname) in DASHBOARD_MEASURES.items()
+                for label, (mid, mname) in all_calls.items()
             }
             for future in as_completed(futures):
                 label = futures[future]
                 try:
-                    dashboard[label] = future.result()
+                    results[label] = future.result()
                 except Exception:
-                    dashboard[label] = None
+                    results[label] = None
+
+        main_pred = results.pop("__main__", None)
+        if main_pred is None:
+            return jsonify({"success": False, "error": "Model call failed for main prediction"}), 500
+
+        # Nearby hospitals from dataset (no Databricks call needed)
+        nearby = get_nearby_hospitals(
+            body["State"], body["County/Parish"], patient_type
+        )
 
         return jsonify({
-            "success": True,
-            "prediction": main_pred,
+            "success":      True,
+            "prediction":   main_pred,
             "patient_type": patient_type,
-            "dashboard": dashboard,
+            "dashboard":    results,
+            "nearby":       nearby,
         })
 
     except Exception as e:
