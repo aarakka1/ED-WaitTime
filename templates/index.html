@@ -30,39 +30,38 @@
 
       <div class="px-8 py-6">
         <form id="predict-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1" for="State">State</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1">State</label>
             <input id="State" type="text" placeholder="e.g., AZ"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400" required />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1" for="CountyParish">County / Parish</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1">County / Parish</label>
             <input id="CountyParish" type="text" placeholder="e.g., Maricopa"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400" required />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1" for="ZipCode">ZIP Code</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1">ZIP Code</label>
             <input id="ZipCode" type="number" inputmode="numeric" placeholder="e.g., 85001"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400" required />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1" for="Year">Year</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Year</label>
             <input id="Year" type="number" inputmode="numeric" placeholder="e.g., 2024"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400" required />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1" for="Month">Month</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Month</label>
             <input id="Month" type="number" min="1" max="12" inputmode="numeric" placeholder="1–12"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400" required />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1" for="PatientType">Visit / Patient Type</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Visit / Patient Type</label>
             <select id="PatientType"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400">
               <option value="General">General</option>
@@ -70,7 +69,6 @@
               <option value="Psych / Mental Health">Psych / Mental Health</option>
             </select>
           </div>
-
         </form>
 
         <!-- Buttons -->
@@ -88,7 +86,7 @@
           </p>
         </div>
 
-        <!-- Main prediction result -->
+        <!-- Main prediction -->
         <div id="result-card" class="mt-6 hidden">
           <div class="rounded-2xl border border-emerald-500/30 bg-slate-900/80 px-6 py-5">
             <p class="text-xs font-semibold tracking-wide text-slate-400 uppercase">Predicted Wait Time</p>
@@ -98,36 +96,55 @@
           </div>
         </div>
 
-        <!-- Dashboard -->
+        <!-- ED Scorecard -->
         <div id="dashboard-card" class="mt-4 hidden">
           <p class="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-3">ED Scorecard for This Location</p>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-
             <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
               <p class="text-[11px] text-slate-400">ED Volume</p>
               <p id="dash-volume" class="mt-1 text-lg font-semibold text-slate-100">—</p>
               <p class="text-[10px] text-slate-500 mt-0.5">volume score</p>
             </div>
-
             <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
               <p class="text-[11px] text-slate-400">Left Before Seen</p>
               <p id="dash-lbs" class="mt-1 text-lg font-semibold text-slate-100">—</p>
               <p class="text-[10px] text-slate-500 mt-0.5">% of patients</p>
             </div>
-
             <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
               <p class="text-[11px] text-slate-400">Head CT Time</p>
               <p id="dash-ct" class="mt-1 text-lg font-semibold text-slate-100">—</p>
               <p class="text-[10px] text-slate-500 mt-0.5">minutes</p>
             </div>
-
             <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
               <p class="text-[11px] text-slate-400">Transfer Wait</p>
               <p id="dash-transfer" class="mt-1 text-lg font-semibold text-slate-100">—</p>
               <p class="text-[10px] text-slate-500 mt-0.5">minutes</p>
             </div>
-
           </div>
+        </div>
+
+        <!-- Nearby hospitals -->
+        <div id="nearby-card" class="mt-6 hidden">
+          <p class="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-3">
+            Nearby EDs — Ranked by Wait Time
+          </p>
+          <div class="rounded-2xl border border-slate-800 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-900/80 text-[11px] text-slate-400 uppercase">
+                  <th class="text-left px-4 py-2.5 font-medium">Hospital</th>
+                  <th class="text-left px-4 py-2.5 font-medium hidden md:table-cell">City</th>
+                  <th class="text-left px-4 py-2.5 font-medium hidden md:table-cell">Phone</th>
+                  <th class="text-right px-4 py-2.5 font-medium">Wait</th>
+                </tr>
+              </thead>
+              <tbody id="nearby-tbody" class="divide-y divide-slate-800">
+              </tbody>
+            </table>
+          </div>
+          <p class="mt-2 text-[10px] text-slate-500">
+            Based on most recent measured data. Sorted by shortest wait time.
+          </p>
         </div>
 
         <!-- Error -->
@@ -147,11 +164,12 @@
   </div>
 
   <script>
-    const submitBtn = document.getElementById("submit-btn");
-    const resetBtn  = document.getElementById("reset-btn");
-    const resultCard    = document.getElementById("result-card");
-    const dashboardCard = document.getElementById("dashboard-card");
-    const errorCard     = document.getElementById("error-card");
+    const submitBtn    = document.getElementById("submit-btn");
+    const resetBtn     = document.getElementById("reset-btn");
+    const resultCard   = document.getElementById("result-card");
+    const dashboardCard= document.getElementById("dashboard-card");
+    const nearbyCard   = document.getElementById("nearby-card");
+    const errorCard    = document.getElementById("error-card");
 
     function setLoading(on) {
       submitBtn.disabled = on;
@@ -161,7 +179,15 @@
     function clearMessages() {
       resultCard.classList.add("hidden");
       dashboardCard.classList.add("hidden");
+      nearbyCard.classList.add("hidden");
       errorCard.classList.add("hidden");
+    }
+
+    function waitColor(mins) {
+      if (mins === null) return "text-slate-400";
+      if (mins < 120) return "text-emerald-400";
+      if (mins < 200) return "text-amber-400";
+      return "text-red-400";
     }
 
     resetBtn.addEventListener("click", (e) => {
@@ -176,12 +202,12 @@
       setLoading(true);
 
       const payload = {
-        "State":        document.getElementById("State").value.trim(),
-        "County/Parish":document.getElementById("CountyParish").value.trim(),
-        "ZIP Code":     document.getElementById("ZipCode").value,
-        "Year":         document.getElementById("Year").value,
-        "Month":        document.getElementById("Month").value,
-        "PatientType":  document.getElementById("PatientType").value,
+        "State":         document.getElementById("State").value.trim(),
+        "County/Parish": document.getElementById("CountyParish").value.trim(),
+        "ZIP Code":      document.getElementById("ZipCode").value,
+        "Year":          document.getElementById("Year").value,
+        "Month":         document.getElementById("Month").value,
+        "PatientType":   document.getElementById("PatientType").value,
       };
 
       try {
@@ -210,6 +236,32 @@
           document.getElementById("dash-ct").textContent       = d["Head CT Result Time"]    ?? "N/A";
           document.getElementById("dash-transfer").textContent = d["Transfer Wait Time"]     ?? "N/A";
           dashboardCard.classList.remove("hidden");
+
+          // Nearby hospitals table
+          const tbody = document.getElementById("nearby-tbody");
+          tbody.innerHTML = "";
+          if (data.nearby && data.nearby.length > 0) {
+            data.nearby.forEach((h, i) => {
+              const color = waitColor(h.wait);
+              const rank = i === 0
+                ? `<span class="inline-block bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded-md mr-1">Fastest</span>`
+                : "";
+              tbody.innerHTML += `
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="px-4 py-3">
+                    ${rank}
+                    <span class="font-medium text-slate-100">${h.name}</span>
+                    <span class="block text-[11px] text-slate-500 md:hidden">${h.city}</span>
+                  </td>
+                  <td class="px-4 py-3 text-slate-400 hidden md:table-cell">${h.city}</td>
+                  <td class="px-4 py-3 text-slate-400 hidden md:table-cell">${h.phone}</td>
+                  <td class="px-4 py-3 text-right font-semibold ${color}">
+                    ${h.wait !== null ? h.wait + " min" : "N/A"}
+                  </td>
+                </tr>`;
+            });
+            nearbyCard.classList.remove("hidden");
+          }
         }
       } catch (err) {
         document.getElementById("error-message").textContent = "Network error while calling /predict.";
