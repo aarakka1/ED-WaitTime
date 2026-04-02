@@ -118,7 +118,6 @@ def get_nearby_hospitals(state, county, patient_type="General"):
     if nearby.empty:
         return []
 
-    # Keep most recent year per facility
     nearby = nearby.sort_values("Year", ascending=False)
     nearby = nearby.drop_duplicates(subset=["Facility Name"])
     nearby = nearby.dropna(subset=["Score"])
@@ -127,13 +126,13 @@ def get_nearby_hospitals(state, county, patient_type="General"):
     results = []
     for _, row in nearby.iterrows():
         results.append({
-            "name":     row["Facility Name"].title(),
-            "address":  row["Address"].title() if pd.notna(row["Address"]) else "—",
-            "city":     row["City/Town"].title() if pd.notna(row["City/Town"]) else "—",
-            "zip":      str(int(row["ZIP Code"])) if pd.notna(row["ZIP Code"]) else "—",
-            "phone":    row["Telephone Number"] if pd.notna(row["Telephone Number"]) else "—",
-            "wait":     round(float(row["Score"]), 1) if pd.notna(row["Score"]) else None,
-            "county":   row["County/Parish"].title() if pd.notna(row["County/Parish"]) else "—",
+            "name":    row["Facility Name"].title(),
+            "address": row["Address"].title() if pd.notna(row["Address"]) else "—",
+            "city":    row["City/Town"].title() if pd.notna(row["City/Town"]) else "—",
+            "zip":     str(int(row["ZIP Code"])) if pd.notna(row["ZIP Code"]) else "—",
+            "phone":   row["Telephone Number"] if pd.notna(row["Telephone Number"]) else "—",
+            "wait":    round(float(row["Score"]), 1) if pd.notna(row["Score"]) else None,
+            "county":  row["County/Parish"].title() if pd.notna(row["County/Parish"]) else "—",
         })
     return results
 
@@ -170,7 +169,6 @@ def predict():
             patient_type, PATIENT_TYPE_MAP["General"]
         )
 
-        # Run main prediction + dashboard metrics in parallel
         all_calls = {"__main__": (measure_id, measure_name)}
         all_calls.update(DASHBOARD_MEASURES)
 
@@ -191,7 +189,6 @@ def predict():
         if main_pred is None:
             return jsonify({"success": False, "error": "Model call failed for main prediction"}), 500
 
-        # Nearby hospitals from dataset (no Databricks call needed)
         nearby = get_nearby_hospitals(
             body["State"], body["County/Parish"], patient_type
         )
