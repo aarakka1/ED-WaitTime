@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -42,6 +43,15 @@ df_ed["Year"] = df_ed["Start Date"].dt.year
 df_ed["Month"] = df_ed["Start Date"].dt.month
 
 # =========================
+# In-memory cache
+# =========================
+prediction_cache = {}
+CACHE_TTL = 600  # 10 minutes
+
+def get_cache_key(data, measure_id):
+    return f"{data['State']}_{data['County/Parish']}_{data['ZIP Code']}_{data['Year']}_{data['Month']}_{measure_id}"
+
+# =========================
 # Patient type → measure mapping
 # =========================
 PATIENT_TYPE_MAP = {
@@ -50,11 +60,10 @@ PATIENT_TYPE_MAP = {
     "Psych / Mental Health": ("OP_18c", "Average (median) time patients spent in the emergency department before leaving from the visit- Psychiatric/Mental Health Patients.  A lower number of minutes is better"),
 }
 
+# Reduced to 2 dashboard calls (down from 4) to cut response time
 DASHBOARD_MEASURES = {
-    "ED Volume":              ("EDV",    "Emergency department volume"),
-    "Left Before Being Seen": ("OP_22",  "Left before being seen"),
-    "Head CT Result Time":    ("OP_23",  "Head CT results"),
-    "Transfer Wait Time":     ("OP_18d", "Average (median) time transfer patients spent in the emergency department before leaving from the visit. A lower number of minutes is better"),
+    "ED Volume":              ("EDV",   "Emergency department volume"),
+    "Left Before Being Seen": ("OP_22", "Left before being seen"),
 }
 
 MODEL_FEATURES = [
@@ -75,6 +84,9 @@ def validate_input(data):
             float(data[f])
         except Exception:
             return False, f"Invalid numeric value for: {f}"
+    # Normalize casing
+    data["State"] = data["State"].strip().upper()
+    data["County/Parish"] = data["County/Parish"].strip().title()
     return True, ""
 
 def build_payload(data, measure_id, measure_name):
@@ -99,19 +111,30 @@ def call_model(data, measure_id, measure_name):
         return round(float(result["predictions"][0]), 1)
     return None
 
+def call_model_cached(data, measure_id, measure_name):
+    key = get_cache_key(data, measure_id)
+    now = time.time()
+    if key in prediction_cache:
+        cached_time, cached_val = prediction_cache[key]
+        if now - cached_time < CACHE_TTL:
+            return cached_val
+    result = call_model(data, measure_id, measure_name)
+    if result is not None:
+        prediction_cache[key] = (now, result)
+    return result
+
 def get_nearby_hospitals(state, county, patient_type="General"):
     measure_id = PATIENT_TYPE_MAP.get(patient_type, PATIENT_TYPE_MAP["General"])[0]
 
     nearby = df_ed[
-        (df_ed["State"].str.upper() == state.upper()) &
-        (df_ed["County/Parish"].str.upper() == county.upper()) &
+        (df_ed["State"].str.upper() == state.strip().upper()) &
+        (df_ed["County/Parish"].str.upper() == county.strip().upper()) &
         (df_ed["Measure ID"] == measure_id)
     ].copy()
 
-    # Fall back to state-wide if no county match
     if nearby.empty:
         nearby = df_ed[
-            (df_ed["State"].str.upper() == state.upper()) &
+            (df_ed["State"].str.upper() == state.strip().upper()) &
             (df_ed["Measure ID"] == measure_id)
         ].copy()
 
@@ -151,6 +174,7 @@ def health():
         "features": MODEL_FEATURES,
         "patient_types": list(PATIENT_TYPE_MAP.keys()),
         "facilities_loaded": int(df_ed["Facility Name"].nunique()),
+        "cache_size": len(prediction_cache),
     })
 
 @app.route("/predict", methods=["POST"])
@@ -169,13 +193,14 @@ def predict():
             patient_type, PATIENT_TYPE_MAP["General"]
         )
 
+        # 3 total model calls (down from 5) — all cached after first request
         all_calls = {"__main__": (measure_id, measure_name)}
         all_calls.update(DASHBOARD_MEASURES)
 
         results = {}
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             futures = {
-                executor.submit(call_model, body, mid, mname): label
+                executor.submit(call_model_cached, body, mid, mname): label
                 for label, (mid, mname) in all_calls.items()
             }
             for future in as_completed(futures):
