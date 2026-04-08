@@ -114,10 +114,10 @@
         <p id="prediction-type" class="mt-2 text-xs text-slate-500"></p>
       </div>
 
-      <!-- ED Scorecard -->
+      <!-- ED Scorecard — 2 cards only -->
       <div class="mt-4">
         <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-3">ED Scorecard for This Location</p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 gap-3">
 
           <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
             <p class="text-[11px] text-slate-500 mb-1">ED Volume</p>
@@ -129,18 +129,6 @@
             <p class="text-[11px] text-slate-500 mb-1">Left Before Seen</p>
             <p id="dash-lbs" class="text-xl font-semibold text-slate-100">—</p>
             <p class="text-[10px] text-slate-600 mt-1">% of patients</p>
-          </div>
-
-          <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
-            <p class="text-[11px] text-slate-500 mb-1">Head CT Time</p>
-            <p id="dash-ct" class="text-xl font-semibold text-slate-100">—</p>
-            <p class="text-[10px] text-slate-600 mt-1">minutes</p>
-          </div>
-
-          <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
-            <p class="text-[11px] text-slate-500 mb-1">Transfer Wait</p>
-            <p id="dash-transfer" class="text-xl font-semibold text-slate-100">—</p>
-            <p class="text-[10px] text-slate-600 mt-1">minutes</p>
           </div>
 
         </div>
@@ -166,7 +154,7 @@
           </table>
         </div>
         <p class="mt-2 text-[10px] text-slate-600">
-          Based on most recent measured data from your dataset. Sorted by shortest wait time.
+          Based on most recent measured data. Sorted by shortest wait time.
         </p>
       </div>
 
@@ -178,15 +166,15 @@
   </div>
 
   <script>
-    const submitBtn     = document.getElementById("submit-btn");
-    const resetBtn      = document.getElementById("reset-btn");
-    const resultsSection= document.getElementById("results-section");
-    const nearbyCard    = document.getElementById("nearby-card");
-    const errorCard     = document.getElementById("error-card");
+    const submitBtn      = document.getElementById("submit-btn");
+    const resetBtn       = document.getElementById("reset-btn");
+    const resultsSection = document.getElementById("results-section");
+    const nearbyCard     = document.getElementById("nearby-card");
+    const errorCard      = document.getElementById("error-card");
 
     function setLoading(on) {
       submitBtn.disabled = on;
-      submitBtn.textContent = on ? "Predicting..." : "Predict Wait Time";
+      submitBtn.textContent = on ? "Contacting Databricks..." : "Predict Wait Time";
     }
 
     function clearAll() {
@@ -198,8 +186,8 @@
 
     function waitColor(mins) {
       if (mins === null || mins === undefined) return "text-slate-400";
-      if (mins < 120)  return "text-emerald-400";
-      if (mins < 200)  return "text-amber-400";
+      if (mins < 120) return "text-emerald-400";
+      if (mins < 200) return "text-amber-400";
       return "text-red-400";
     }
 
@@ -225,12 +213,12 @@
       e.preventDefault();
       clearAll();
 
-      const state   = document.getElementById("State").value.trim();
-      const county  = document.getElementById("CountyParish").value.trim();
-      const zip     = document.getElementById("ZipCode").value.trim();
-      const year    = document.getElementById("Year").value.trim();
-      const month   = document.getElementById("Month").value.trim();
-      const ptype   = document.getElementById("PatientType").value;
+      const state  = document.getElementById("State").value.trim();
+      const county = document.getElementById("CountyParish").value.trim();
+      const zip    = document.getElementById("ZipCode").value.trim();
+      const year   = document.getElementById("Year").value.trim();
+      const month  = document.getElementById("Month").value.trim();
+      const ptype  = document.getElementById("PatientType").value;
 
       if (!state || !county || !zip || !year || !month) {
         document.getElementById("error-message").textContent = "Please fill in all fields before predicting.";
@@ -267,13 +255,12 @@
           document.getElementById("prediction-minutes").textContent = Math.round(data.prediction) + " min";
           document.getElementById("prediction-type").textContent = "Visit type: " + data.patient_type;
 
-          // Scorecard
+          // Scorecard — 2 metrics only
           const d = data.dashboard;
-          document.getElementById("dash-volume").textContent   = d["ED Volume"]              ?? "N/A";
-          document.getElementById("dash-lbs").className        = "text-xl font-semibold " + lbsColor(d["Left Before Being Seen"]);
-          document.getElementById("dash-lbs").textContent      = d["Left Before Being Seen"] ?? "N/A";
-          document.getElementById("dash-ct").textContent       = d["Head CT Result Time"]    ?? "N/A";
-          document.getElementById("dash-transfer").textContent = d["Transfer Wait Time"]     ?? "N/A";
+          document.getElementById("dash-volume").textContent = d["ED Volume"] ?? "N/A";
+          const lbsEl = document.getElementById("dash-lbs");
+          lbsEl.className = "text-xl font-semibold " + lbsColor(d["Left Before Being Seen"]);
+          lbsEl.textContent = d["Left Before Being Seen"] ?? "N/A";
 
           resultsSection.classList.remove("hidden");
 
