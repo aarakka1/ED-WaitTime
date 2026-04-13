@@ -238,6 +238,29 @@ def predict():
         return jsonify({"success": False, "error": str(e)}), 500
 
 # =========================
+# Databricks warm-up
+# =========================
+def _warmup():
+    """Fire a dummy prediction on startup and every 9 min to keep Databricks hot."""
+    warmup_data = {
+        "State": "AZ",
+        "County/Parish": "Maricopa",
+        "ZIP Code": 85001,
+        "Year": 2024,
+        "Month": 1,
+    }
+    measure_id, measure_name = PATIENT_TYPE_MAP["General"]
+    while True:
+        try:
+            call_model(warmup_data, measure_id, measure_name)
+        except Exception:
+            pass
+        time.sleep(540)  # 9 minutes
+
+import threading
+threading.Thread(target=_warmup, daemon=True).start()
+
+# =========================
 # Entrypoint
 # =========================
 if __name__ == "__main__":
