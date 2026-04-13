@@ -14,7 +14,7 @@
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen py-10">
-  <div class="w-full max-w-3xl mx-auto px-4">
+  <div class="w-full max-w-6xl mx-auto px-4">
 
     <!-- Header -->
     <div class="mb-6 text-center">
@@ -30,41 +30,41 @@
     <div class="bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-800 px-8 py-6">
       <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-4">Your Details</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="flex gap-3">
 
-        <div>
+        <div style="flex:1">
           <label class="block text-xs font-medium text-slate-300 mb-1">State</label>
           <input id="State" type="text" placeholder="e.g. AZ"
             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
-          <p class="text-[10px] text-slate-500 mt-1">2-letter abbreviation e.g. AZ, TX, NY</p>
+          <p class="text-[10px] text-slate-500 mt-1">e.g. AZ, TX, NY</p>
         </div>
 
-        <div>
+        <div style="flex:2">
           <label class="block text-xs font-medium text-slate-300 mb-1">County / Parish</label>
           <input id="CountyParish" type="text" placeholder="e.g. Maricopa"
             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
-          <p class="text-[10px] text-slate-500 mt-1">Enter your county name</p>
+          <p class="text-[10px] text-slate-500 mt-1">County name</p>
         </div>
 
-        <div>
+        <div style="flex:1">
           <label class="block text-xs font-medium text-slate-300 mb-1">ZIP Code</label>
           <input id="ZipCode" type="number" inputmode="numeric" placeholder="e.g. 85001"
             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
         </div>
 
-        <div>
+        <div style="flex:1">
           <label class="block text-xs font-medium text-slate-300 mb-1">Year</label>
           <input id="Year" type="number" inputmode="numeric" placeholder="e.g. 2024"
             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
         </div>
 
-        <div>
+        <div style="flex:1">
           <label class="block text-xs font-medium text-slate-300 mb-1">Month</label>
           <input id="Month" type="number" min="1" max="12" inputmode="numeric" placeholder="1 – 12"
             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
         </div>
 
-        <div>
+        <div style="flex:2">
           <label class="block text-xs font-medium text-slate-300 mb-1">Visit / Patient Type</label>
           <select id="PatientType"
             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400">
