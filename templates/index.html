@@ -40,14 +40,7 @@
           </select>
         </div>
 
-        <div style="flex:2">
-          <label class="block text-xs font-medium text-slate-300 mb-1">County / Parish</label>
-          <select id="CountyParish" disabled class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 disabled:opacity-50">
-            <option value="">Select state first…</option>
-          </select>
-        </div>
-
-        <div style="flex:1">
+<div style="flex:1">
           <label class="block text-xs font-medium text-slate-300 mb-1">ZIP Code</label>
           <input id="ZipCode" type="number" inputmode="numeric" placeholder="e.g. 85001"
             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
@@ -169,24 +162,7 @@
   <script>
     const stateFips = {"AL":"01","AK":"02","AZ":"04","AR":"05","CA":"06","CO":"08","CT":"09","DE":"10","FL":"12","GA":"13","HI":"15","ID":"16","IL":"17","IN":"18","IA":"19","KS":"20","KY":"21","LA":"22","ME":"23","MD":"24","MA":"25","MI":"26","MN":"27","MS":"28","MO":"29","MT":"30","NE":"31","NV":"32","NH":"33","NJ":"34","NM":"35","NY":"36","NC":"37","ND":"38","OH":"39","OK":"40","OR":"41","PA":"42","RI":"44","SC":"45","SD":"46","TN":"47","TX":"48","UT":"49","VT":"50","VA":"51","WA":"53","WV":"54","WI":"55","WY":"56"};
 
-    document.getElementById("State").addEventListener("change", async function() {
-      const countySelect = document.getElementById("CountyParish");
-      const fips = stateFips[this.value];
-      if (!fips) { countySelect.innerHTML = '<option value="">Select state first…</option>'; countySelect.disabled = true; return; }
-      countySelect.innerHTML = '<option value="">Loading…</option>';
-      countySelect.disabled = true;
-      try {
-        const res = await fetch(`https://api.census.gov/data/2019/acs/acs5?get=NAME&for=county:*&in=state:${fips}`);
-        const rows = await res.json();
-        const counties = rows.slice(1).map(r => r[0].replace(/,.*$/, "").replace(/ (County|Parish|Borough|Municipality|Census Area|city)$/i, "")).sort();
-        countySelect.innerHTML = '<option value="">Select county…</option>' + counties.map(c => `<option value="${c}">${c}</option>`).join("");
-        countySelect.disabled = false;
-      } catch(e) {
-        countySelect.innerHTML = '<option value="">Failed to load</option>';
-      }
-    });
-
-    const submitBtn      = document.getElementById("submit-btn");
+const submitBtn      = document.getElementById("submit-btn");
     const resetBtn       = document.getElementById("reset-btn");
     const resultsSection = document.getElementById("results-section");
     const nearbyCard     = document.getElementById("nearby-card");
@@ -221,9 +197,6 @@
     resetBtn.addEventListener("click", (e) => {
       e.preventDefault();
       document.getElementById("State").value = "";
-      const cp = document.getElementById("CountyParish");
-      cp.innerHTML = '<option value="">Select state first…</option>';
-      cp.disabled = true;
       document.getElementById("ZipCode").value = "";
       document.getElementById("Year").value = "";
       document.getElementById("Month").value = "";
@@ -236,13 +209,12 @@
       clearAll();
 
       const state  = document.getElementById("State").value.trim();
-      const county = document.getElementById("CountyParish").value.trim();
       const zip    = document.getElementById("ZipCode").value.trim();
       const year   = document.getElementById("Year").value.trim();
       const month  = document.getElementById("Month").value.trim();
       const ptype  = document.getElementById("PatientType").value;
 
-      if (!state || !county || !zip || !year || !month) {
+      if (!state || !zip || !year || !month) {
         document.getElementById("error-message").textContent = "Please fill in all fields before predicting.";
         errorCard.classList.remove("hidden");
         return;
@@ -252,7 +224,6 @@
 
       const payload = {
         "State":         state,
-        "County/Parish": county,
         "ZIP Code":      zip,
         "Year":          year,
         "Month":         month,
