@@ -75,7 +75,7 @@ MODEL_FEATURES = [
 # Helpers
 # =========================
 def validate_input(data):
-    required = ["State", "County/Parish", "ZIP Code", "Year", "Month"]
+    required = ["State", "ZIP Code", "Year", "Month"]
     missing = [f for f in required if f not in data or data[f] in (None, "", [])]
     if missing:
         return False, f"Missing required fields: {', '.join(missing)}"
@@ -86,7 +86,15 @@ def validate_input(data):
             return False, f"Invalid numeric value for: {f}"
     # Normalize casing
     data["State"] = data["State"].strip().upper()
-    data["County/Parish"] = data["County/Parish"].strip().title()
+    # Auto-derive county from ZIP if not provided
+    if not data.get("County/Parish"):
+        match = df_ed[df_ed["ZIP Code"] == float(data["ZIP Code"])]
+        if not match.empty:
+            data["County/Parish"] = match.iloc[0]["County/Parish"]
+        else:
+            data["County/Parish"] = ""
+    else:
+        data["County/Parish"] = data["County/Parish"].strip().title()
     return True, ""
 
 def build_payload(data, measure_id, measure_name):
