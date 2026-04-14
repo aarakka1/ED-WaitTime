@@ -11,6 +11,9 @@
         "Inter", "Segoe UI", sans-serif;
     }
     select option { background-color: #0f172a; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen py-10">
@@ -98,9 +101,6 @@
           class="inline-flex items-center justify-center rounded-xl border border-slate-700 text-slate-300 text-xs px-4 py-2.5 hover:bg-slate-800 transition-all">
           Clear Form
         </button>
-        <span class="text-[11px] text-slate-500 sm:ml-auto">
-          Endpoint: <span class="font-mono text-emerald-400">/predict</span>
-        </span>
       </div>
     </div>
 
