@@ -441,7 +441,7 @@
           }
         }
       } catch (err) {
-        document.getElementById("error-message").textContent = "Network error while calling /predict.";
+        document.getElementById("error-message").textContent = "Request failed: " + (err.message || err);
         errorCard.classList.remove("hidden");
       } finally {
         setLoading(false);

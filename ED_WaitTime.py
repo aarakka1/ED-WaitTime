@@ -335,7 +335,7 @@ def predict_imaging():
 # Databricks warm-up
 # =========================
 def _warmup():
-    """Fire a dummy prediction on startup and every 9 min to keep the Databricks endpoint hot."""
+    """Ping all measures on startup and every 9 min to keep the Databricks endpoint hot."""
     warmup_data = {
         "State": "TX",
         "County/Parish": "Harris",
@@ -343,12 +343,17 @@ def _warmup():
         "Year": 2024,
         "Month": 10,
     }
+    warmup_measures = [
+        PATIENT_TYPE_MAP["General"],
+        CONGESTION_MEASURE,
+        IMAGING_MEASURE,
+    ]
     while True:
-        try:
-            mid, mname = PATIENT_TYPE_MAP["General"]
-            call_model(warmup_data, mid, mname)
-        except Exception:
-            pass
+        for mid, mname in warmup_measures:
+            try:
+                call_model(warmup_data, mid, mname)
+            except Exception:
+                pass
         time.sleep(540)  # 9 minutes
 
 import threading
