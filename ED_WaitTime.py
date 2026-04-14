@@ -347,10 +347,11 @@ def _warmup():
         PATIENT_TYPE_MAP["General"],
         CONGESTION_MEASURE,
         IMAGING_MEASURE,
+        *DASHBOARD_MEASURES.values(),   # EDV + OP_22 dashboard cards on Wait Time tab
     ]
     while True:
-        with ThreadPoolExecutor(max_workers=3) as ex:
-            futures = [ex.submit(call_model, warmup_data, mid, mname) for mid, mname in warmup_measures]
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            futures = [ex.submit(call_model_cached, warmup_data, mid, mname) for mid, mname in warmup_measures]
             for f in futures:
                 try:
                     f.result()
