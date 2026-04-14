@@ -335,7 +335,7 @@ def predict_imaging():
 # Databricks warm-up
 # =========================
 def _warmup():
-    """Ping all measures on startup and every 9 min to keep the Databricks endpoint hot."""
+    """Ping all measures in parallel on startup and every 9 min to keep the endpoint hot."""
     warmup_data = {
         "State": "TX",
         "County/Parish": "Harris",
@@ -349,11 +349,13 @@ def _warmup():
         IMAGING_MEASURE,
     ]
     while True:
-        for mid, mname in warmup_measures:
-            try:
-                call_model(warmup_data, mid, mname)
-            except Exception:
-                pass
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            futures = [ex.submit(call_model, warmup_data, mid, mname) for mid, mname in warmup_measures]
+            for f in futures:
+                try:
+                    f.result()
+                except Exception:
+                    pass
         time.sleep(540)  # 9 minutes
 
 import threading
