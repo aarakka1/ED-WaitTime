@@ -2,14 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Emergency Department Wait Time Prediction</title>
+  <title>Emergency Department Intelligence</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-        "Inter", "Segoe UI", sans-serif;
-    }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif; }
     select option { background-color: #0f172a; }
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -21,21 +18,38 @@
 
     <!-- Header -->
     <div class="mb-6 text-center">
-      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight text-white">
-        Emergency Department Wait Time
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-white">
+        Emergency Department Intelligence
       </h1>
       <p class="mt-2 text-sm text-slate-400">
-        Enter your location and visit details to get a predicted wait time and compare nearby hospitals, powered by a live ML model on Databricks.
+        Enter your location and visit details to get predictions powered by live ML models on Databricks.
       </p>
       <p class="mt-2 text-[11px] text-slate-600">Powered by Databricks MLflow &amp; Flask &bull; Deployed on Render</p>
     </div>
 
-    <!-- Form card -->
+    <!-- Tab Nav -->
+    <div class="border-b border-slate-800 mb-6">
+      <div class="flex">
+        <button onclick="switchTab('wait')" id="tab-wait"
+          class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-emerald-400 text-emerald-400 transition-colors">
+          Wait Time
+        </button>
+        <button onclick="switchTab('congestion')" id="tab-congestion"
+          class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
+          Congestion Risk
+        </button>
+        <button onclick="switchTab('imaging')" id="tab-imaging"
+          class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
+          Imaging Speed
+        </button>
+      </div>
+    </div>
+
+    <!-- Form card (shared across tabs) -->
     <div class="bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-800 px-8 py-6">
       <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-4">Your Details</p>
 
       <div class="flex gap-3">
-
         <div style="flex:1">
           <label class="block text-xs font-medium text-slate-300 mb-1">State</label>
           <select id="State" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 appearance-none">
@@ -44,7 +58,7 @@
           </select>
         </div>
 
-<div style="flex:1">
+        <div style="flex:1">
           <label class="block text-xs font-medium text-slate-300 mb-1">ZIP Code</label>
           <input id="ZipCode" type="number" inputmode="numeric" placeholder="e.g. 85001" autocomplete="off"
             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 placeholder-slate-500" />
@@ -63,36 +77,26 @@
           <label class="block text-xs font-medium text-slate-300 mb-1">Month</label>
           <select id="Month" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 appearance-none">
             <option value="">Select month…</option>
-            <option value="1">January</option>
-            <option value="2">February</option>
-            <option value="3">March</option>
-            <option value="4">April</option>
-            <option value="5">May</option>
-            <option value="6">June</option>
-            <option value="7">July</option>
-            <option value="8">August</option>
-            <option value="9">September</option>
-            <option value="10">October</option>
-            <option value="11">November</option>
-            <option value="12">December</option>
+            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
           </select>
         </div>
 
-        <div style="flex:2">
+        <div style="flex:2" id="patient-type-field">
           <label class="block text-xs font-medium text-slate-300 mb-1">Visit / Patient Type</label>
-          <select id="PatientType"
-            class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 appearance-none">
+          <select id="PatientType" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 appearance-none">
             <option value="General">General</option>
             <option value="Transfer">Transfer</option>
             <option value="Psych / Mental Health">Psych / Mental Health</option>
           </select>
           <p class="text-[10px] text-slate-500 mt-1">Select the type of visit</p>
         </div>
-
       </div>
 
       <!-- Buttons -->
-      <div class="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+      <div class="mt-6 flex items-center gap-3">
         <button id="submit-btn"
           class="inline-flex items-center justify-center rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 text-sm font-semibold px-5 py-2.5 shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
           Predict Wait Time
@@ -112,78 +116,123 @@
       </div>
     </div>
 
-    <!-- Results -->
-    <div id="results-section" class="hidden">
-
-      <!-- Predicted wait time -->
-      <div class="mt-4 rounded-2xl border border-emerald-500/20 bg-slate-900/80 px-6 py-5">
-        <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Predicted Wait Time</p>
-        <div class="mt-2 flex items-end gap-3">
-          <p id="prediction-value" class="text-5xl font-semibold text-emerald-400"></p>
-          <p id="prediction-minutes" class="text-lg text-emerald-300/60 mb-1"></p>
-        </div>
-        <p id="prediction-type" class="mt-2 text-xs text-slate-500"></p>
-      </div>
-
-      <!-- ED Scorecard — 2 cards only -->
-      <div class="mt-4">
-        <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-3">ED Scorecard for This Location</p>
-        <div class="grid grid-cols-2 gap-3">
-
-          <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
-            <p class="text-[11px] text-slate-500 mb-1">ED Volume</p>
-            <p id="dash-volume" class="text-xl font-semibold text-slate-100">—</p>
-            <p class="text-[10px] text-slate-600 mt-1">volume score</p>
+    <!-- ── TAB: Wait Time Results ── -->
+    <div id="panel-wait" class="tab-panel">
+      <div id="results-section" class="hidden">
+        <div class="mt-4 rounded-2xl border border-emerald-500/20 bg-slate-900/80 px-6 py-5">
+          <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Predicted Wait Time</p>
+          <div class="mt-2 flex items-end gap-3">
+            <p id="prediction-value" class="text-5xl font-semibold text-emerald-400"></p>
+            <p id="prediction-minutes" class="text-lg text-emerald-300/60 mb-1"></p>
           </div>
+          <p id="prediction-type" class="mt-2 text-xs text-slate-500"></p>
+        </div>
 
-          <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
-            <p class="text-[11px] text-slate-500 mb-1">Left Before Seen</p>
-            <p id="dash-lbs" class="text-xl font-semibold text-slate-100">—</p>
-            <p class="text-[10px] text-slate-600 mt-1">% of patients</p>
+        <div class="mt-4">
+          <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-3">ED Scorecard for This Location</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
+              <p class="text-[11px] text-slate-500 mb-1">ED Volume</p>
+              <p id="dash-volume" class="text-xl font-semibold text-slate-100">—</p>
+              <p class="text-[10px] text-slate-600 mt-1">volume score</p>
+            </div>
+            <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-3">
+              <p class="text-[11px] text-slate-500 mb-1">Left Before Seen</p>
+              <p id="dash-lbs" class="text-xl font-semibold text-slate-100">—</p>
+              <p class="text-[10px] text-slate-600 mt-1">% of patients</p>
+            </div>
           </div>
+        </div>
 
+        <div id="nearby-card" class="mt-4 hidden">
+          <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-3">
+            Nearby Emergency Departments — Ranked by Wait Time
+          </p>
+          <div class="rounded-2xl border border-slate-800 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-900 text-[11px] text-slate-500 uppercase border-b border-slate-800">
+                  <th class="text-left px-4 py-3 font-medium">Hospital</th>
+                  <th class="text-left px-4 py-3 font-medium hidden md:table-cell">City</th>
+                  <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Phone</th>
+                  <th class="text-right px-4 py-3 font-medium">Wait</th>
+                </tr>
+              </thead>
+              <tbody id="nearby-tbody" class="divide-y divide-slate-800/60 bg-slate-900/50"></tbody>
+            </table>
+          </div>
+          <p class="mt-2 text-[10px] text-slate-600">Based on most recent measured data. Sorted by shortest wait time.</p>
         </div>
       </div>
+    </div>
 
-      <!-- Nearby hospitals -->
-      <div id="nearby-card" class="mt-4 hidden">
-        <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-3">
-          Nearby Emergency Departments — Ranked by Wait Time
-        </p>
-        <div class="rounded-2xl border border-slate-800 overflow-hidden">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-slate-900 text-[11px] text-slate-500 uppercase border-b border-slate-800">
-                <th class="text-left px-4 py-3 font-medium">Hospital</th>
-                <th class="text-left px-4 py-3 font-medium hidden md:table-cell">City</th>
-                <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Phone</th>
-                <th class="text-right px-4 py-3 font-medium">Wait</th>
-              </tr>
-            </thead>
-            <tbody id="nearby-tbody" class="divide-y divide-slate-800/60 bg-slate-900/50">
-            </tbody>
-          </table>
+    <!-- ── TAB: Congestion Risk ── -->
+    <div id="panel-congestion" class="tab-panel hidden">
+      <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 px-8 py-10 text-center">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 mb-4">
+          <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
         </div>
-        <p class="mt-2 text-[10px] text-slate-600">
-          Based on most recent measured data. Sorted by shortest wait time.
+        <h3 class="text-lg font-semibold text-white mb-2">Congestion Risk</h3>
+        <p class="text-sm text-slate-400 max-w-md mx-auto mb-4">
+          Predicts the likelihood of patients leaving before being seen — a direct measure of how overwhelmed an ED is. Model in training.
         </p>
+        <span class="inline-block bg-amber-500/10 text-amber-400 text-xs font-medium px-3 py-1 rounded-full border border-amber-500/20">
+          Coming Soon — Model in Training
+        </span>
       </div>
+    </div>
 
+    <!-- ── TAB: Imaging Speed ── -->
+    <div id="panel-imaging" class="tab-panel hidden">
+      <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 px-8 py-10 text-center">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
+          <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-white mb-2">Imaging Speed</h3>
+        <p class="text-sm text-slate-400 max-w-md mx-auto mb-4">
+          Predicts how quickly you'll receive Head CT scan results at nearby EDs — critical for time-sensitive conditions. Model in training.
+        </p>
+        <span class="inline-block bg-blue-500/10 text-blue-400 text-xs font-medium px-3 py-1 rounded-full border border-blue-500/20">
+          Coming Soon — Model in Training
+        </span>
+      </div>
     </div>
 
   </div>
 
   <script>
-    // Pre-fill with popular defaults
-    document.getElementById("State").value   = "TX";
-    document.getElementById("ZipCode").value = "77030";
-    document.getElementById("Year").value    = "2024";
-    document.getElementById("Month").value   = "10";
+    // Pre-fill defaults
+    document.getElementById("State").value       = "TX";
+    document.getElementById("ZipCode").value     = "77030";
+    document.getElementById("Year").value        = "2024";
+    document.getElementById("Month").value       = "10";
     document.getElementById("PatientType").value = "General";
 
-    const stateFips = {"AL":"01","AK":"02","AZ":"04","AR":"05","CA":"06","CO":"08","CT":"09","DE":"10","FL":"12","GA":"13","HI":"15","ID":"16","IL":"17","IN":"18","IA":"19","KS":"20","KY":"21","LA":"22","ME":"23","MD":"24","MA":"25","MI":"26","MN":"27","MS":"28","MO":"29","MT":"30","NE":"31","NV":"32","NH":"33","NJ":"34","NM":"35","NY":"36","NC":"37","ND":"38","OH":"39","OK":"40","OR":"41","PA":"42","RI":"44","SC":"45","SD":"46","TN":"47","TX":"48","UT":"49","VT":"50","VA":"51","WA":"53","WV":"54","WI":"55","WY":"56"};
+    // Tab switching
+    let activeTab = "wait";
+    const tabLabels = { wait: "Predict Wait Time", congestion: "Predict Congestion Risk", imaging: "Predict Imaging Speed" };
 
-const submitBtn      = document.getElementById("submit-btn");
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
+      document.getElementById("panel-" + tab).classList.remove("hidden");
+      document.querySelectorAll(".tab-btn").forEach(b => {
+        b.classList.remove("border-emerald-400", "text-emerald-400");
+        b.classList.add("border-transparent", "text-slate-400");
+      });
+      document.getElementById("tab-" + tab).classList.add("border-emerald-400", "text-emerald-400");
+      document.getElementById("tab-" + tab).classList.remove("border-transparent", "text-slate-400");
+      document.getElementById("submit-btn").textContent = tabLabels[tab];
+      // Hide patient type for non-wait tabs
+      document.getElementById("patient-type-field").style.display = tab === "wait" ? "" : "none";
+      clearAll();
+    }
+
+    const submitBtn      = document.getElementById("submit-btn");
     const resetBtn       = document.getElementById("reset-btn");
     const resultsSection = document.getElementById("results-section");
     const nearbyCard     = document.getElementById("nearby-card");
@@ -193,7 +242,7 @@ const submitBtn      = document.getElementById("submit-btn");
       submitBtn.disabled = on;
       submitBtn.innerHTML = on
         ? `<svg class="animate-spin inline-block w-4 h-4 mr-2 -mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>Predicting…`
-        : "Predict Wait Time";
+        : tabLabels[activeTab];
     }
 
     function clearAll() {
@@ -219,10 +268,10 @@ const submitBtn      = document.getElementById("submit-btn");
 
     resetBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      document.getElementById("State").value = "";
-      document.getElementById("ZipCode").value = "";
-      document.getElementById("Year").value = "";
-      document.getElementById("Month").value = "";
+      document.getElementById("State").value       = "";
+      document.getElementById("ZipCode").value     = "";
+      document.getElementById("Year").value        = "";
+      document.getElementById("Month").value       = "";
       document.getElementById("PatientType").value = "General";
       clearAll();
     });
@@ -231,11 +280,11 @@ const submitBtn      = document.getElementById("submit-btn");
       e.preventDefault();
       clearAll();
 
-      const state  = document.getElementById("State").value.trim();
-      const zip    = document.getElementById("ZipCode").value.trim();
-      const year   = document.getElementById("Year").value.trim();
-      const month  = document.getElementById("Month").value.trim();
-      const ptype  = document.getElementById("PatientType").value;
+      const state = document.getElementById("State").value.trim();
+      const zip   = document.getElementById("ZipCode").value.trim();
+      const year  = document.getElementById("Year").value.trim();
+      const month = document.getElementById("Month").value.trim();
+      const ptype = document.getElementById("PatientType").value;
 
       if (!state || !zip || !year || !month) {
         document.getElementById("error-message").textContent = "Please fill in all fields before predicting.";
@@ -243,15 +292,16 @@ const submitBtn      = document.getElementById("submit-btn");
         return;
       }
 
+      // Congestion & Imaging tabs — placeholder until models are ready
+      if (activeTab === "congestion" || activeTab === "imaging") {
+        document.getElementById("error-message").textContent = "This model is currently in training. Check back soon!";
+        errorCard.classList.remove("hidden");
+        return;
+      }
+
       setLoading(true);
 
-      const payload = {
-        "State":         state,
-        "ZIP Code":      zip,
-        "Year":          year,
-        "Month":         month,
-        "PatientType":   ptype,
-      };
+      const payload = { "State": state, "ZIP Code": zip, "Year": year, "Month": month, "PatientType": ptype };
 
       try {
         const response = await fetch("/predict", {
@@ -266,12 +316,10 @@ const submitBtn      = document.getElementById("submit-btn");
           document.getElementById("error-message").textContent = data.error || "Prediction failed.";
           errorCard.classList.remove("hidden");
         } else {
-          // Main prediction
           document.getElementById("prediction-value").textContent = data.prediction.toFixed(1);
           document.getElementById("prediction-minutes").textContent = Math.round(data.prediction) + " min";
           document.getElementById("prediction-type").textContent = "Visit type: " + data.patient_type;
 
-          // Scorecard — 2 metrics only
           const d = data.dashboard;
           document.getElementById("dash-volume").textContent = d["ED Volume"] ?? "N/A";
           const lbsEl = document.getElementById("dash-lbs");
@@ -280,7 +328,6 @@ const submitBtn      = document.getElementById("submit-btn");
 
           resultsSection.classList.remove("hidden");
 
-          // Nearby hospitals
           const tbody = document.getElementById("nearby-tbody");
           if (data.nearby && data.nearby.length > 0) {
             data.nearby.forEach((h, i) => {
@@ -291,17 +338,12 @@ const submitBtn      = document.getElementById("submit-btn");
               tbody.innerHTML += `
                 <tr class="hover:bg-slate-800/30 transition-colors">
                   <td class="px-4 py-3">
-                    <div class="flex items-center flex-wrap gap-1">
-                      ${fastBadge}
-                      <span class="font-medium text-slate-100 text-sm">${h.name}</span>
-                    </div>
+                    <div class="flex items-center flex-wrap gap-1">${fastBadge}<span class="font-medium text-slate-100 text-sm">${h.name}</span></div>
                     <span class="block text-[11px] text-slate-500 mt-0.5 md:hidden">${h.city} · ${h.phone}</span>
                   </td>
                   <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.city}</td>
                   <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.phone}</td>
-                  <td class="px-4 py-3 text-right font-semibold text-sm ${color}">
-                    ${h.wait !== null ? h.wait + " min" : "N/A"}
-                  </td>
+                  <td class="px-4 py-3 text-right font-semibold text-sm ${color}">${h.wait !== null ? h.wait + " min" : "N/A"}</td>
                 </tr>`;
             });
             nearbyCard.classList.remove("hidden");
