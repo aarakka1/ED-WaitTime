@@ -168,37 +168,59 @@
 
     <!-- ── TAB: Congestion Risk ── -->
     <div id="panel-congestion" class="tab-panel hidden">
-      <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 px-8 py-10 text-center">
-        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 mb-4">
-          <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
+      <div id="congestion-results" class="hidden mt-6 space-y-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/50 px-8 py-8 text-center">
+          <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-1">Predicted Left-Before-Seen Rate</p>
+          <p class="text-5xl font-bold text-white mb-1"><span id="congestion-value">—</span><span class="text-2xl text-slate-400 ml-1">%</span></p>
+          <p id="congestion-risk-badge" class="mt-3 inline-block text-sm font-semibold px-4 py-1 rounded-full"></p>
         </div>
-        <h3 class="text-lg font-semibold text-white mb-2">Congestion Risk</h3>
-        <p class="text-sm text-slate-400 max-w-md mx-auto mb-4">
-          Predicts the likelihood of patients leaving before being seen — a direct measure of how overwhelmed an ED is. Model in training.
-        </p>
-        <span class="inline-block bg-amber-500/10 text-amber-400 text-xs font-medium px-3 py-1 rounded-full border border-amber-500/20">
-          Coming Soon — Model in Training
-        </span>
+        <div id="congestion-nearby-card" class="hidden rounded-2xl border border-slate-800 bg-slate-900/50 overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-800">
+            <h3 class="text-sm font-semibold text-slate-300">Nearby EDs — Ranked by Lowest Left-Before-Seen Rate</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-slate-400">
+              <thead class="text-xs text-slate-500 bg-slate-800/40">
+                <tr>
+                  <th class="text-left px-4 py-3 font-medium">Hospital</th>
+                  <th class="text-left px-4 py-3 font-medium hidden md:table-cell">City</th>
+                  <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Phone</th>
+                  <th class="text-right px-4 py-3 font-medium">Rate</th>
+                </tr>
+              </thead>
+              <tbody id="congestion-tbody" class="divide-y divide-slate-800/60 bg-slate-900/50"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- ── TAB: Imaging Speed ── -->
     <div id="panel-imaging" class="tab-panel hidden">
-      <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 px-8 py-10 text-center">
-        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
-          <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/>
-          </svg>
+      <div id="imaging-results" class="hidden mt-6 space-y-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/50 px-8 py-8 text-center">
+          <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-1">Predicted Head CT Result Time</p>
+          <p class="text-5xl font-bold text-white mb-1"><span id="imaging-value">—</span><span class="text-2xl text-slate-400 ml-1">min</span></p>
+          <p class="text-sm text-slate-500 mt-1">Estimated minutes from arrival to CT results</p>
         </div>
-        <h3 class="text-lg font-semibold text-white mb-2">Imaging Speed</h3>
-        <p class="text-sm text-slate-400 max-w-md mx-auto mb-4">
-          Predicts how quickly you'll receive Head CT scan results at nearby EDs — critical for time-sensitive conditions. Model in training.
-        </p>
-        <span class="inline-block bg-blue-500/10 text-blue-400 text-xs font-medium px-3 py-1 rounded-full border border-blue-500/20">
-          Coming Soon — Model in Training
-        </span>
+        <div id="imaging-nearby-card" class="hidden rounded-2xl border border-slate-800 bg-slate-900/50 overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-800">
+            <h3 class="text-sm font-semibold text-slate-300">Nearby EDs — Ranked by Fastest CT Turnaround</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-slate-400">
+              <thead class="text-xs text-slate-500 bg-slate-800/40">
+                <tr>
+                  <th class="text-left px-4 py-3 font-medium">Hospital</th>
+                  <th class="text-left px-4 py-3 font-medium hidden md:table-cell">City</th>
+                  <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Phone</th>
+                  <th class="text-right px-4 py-3 font-medium">CT Time</th>
+                </tr>
+              </thead>
+              <tbody id="imaging-tbody" class="divide-y divide-slate-800/60 bg-slate-900/50"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -250,6 +272,12 @@
       nearbyCard.classList.add("hidden");
       errorCard.classList.add("hidden");
       document.getElementById("nearby-tbody").innerHTML = "";
+      document.getElementById("congestion-results").classList.add("hidden");
+      document.getElementById("congestion-nearby-card").classList.add("hidden");
+      document.getElementById("congestion-tbody").innerHTML = "";
+      document.getElementById("imaging-results").classList.add("hidden");
+      document.getElementById("imaging-nearby-card").classList.add("hidden");
+      document.getElementById("imaging-tbody").innerHTML = "";
     }
 
     function waitColor(mins) {
@@ -292,61 +320,124 @@
         return;
       }
 
-      // Congestion & Imaging tabs — placeholder until models are ready
-      if (activeTab === "congestion" || activeTab === "imaging") {
-        document.getElementById("error-message").textContent = "This model is currently in training. Check back soon!";
-        errorCard.classList.remove("hidden");
-        return;
-      }
-
       setLoading(true);
 
       const payload = { "State": state, "ZIP Code": zip, "Year": year, "Month": month, "PatientType": ptype };
 
       try {
-        const response = await fetch("/predict", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+        if (activeTab === "congestion") {
+          const response = await fetch("/predict/congestion", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            document.getElementById("error-message").textContent = data.error || "Prediction failed.";
+            errorCard.classList.remove("hidden");
+          } else {
+            document.getElementById("congestion-value").textContent = data.prediction.toFixed(1);
+            const badge = document.getElementById("congestion-risk-badge");
+            const riskColors = { Low: "bg-emerald-500/20 text-emerald-300", Medium: "bg-amber-500/20 text-amber-300", High: "bg-red-500/20 text-red-300" };
+            badge.className = "mt-3 inline-block text-sm font-semibold px-4 py-1 rounded-full " + (riskColors[data.risk_level] || "");
+            badge.textContent = data.risk_level + " Risk";
+            document.getElementById("congestion-results").classList.remove("hidden");
+            const tbody = document.getElementById("congestion-tbody");
+            if (data.nearby && data.nearby.length > 0) {
+              data.nearby.forEach((h, i) => {
+                const bestBadge = i === 0 ? `<span class="inline-block bg-emerald-500/20 text-emerald-300 text-[10px] font-medium px-2 py-0.5 rounded-md mr-2">Lowest</span>` : "";
+                tbody.innerHTML += `
+                  <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td class="px-4 py-3">
+                      <div class="flex items-center flex-wrap gap-1">${bestBadge}<span class="font-medium text-slate-100 text-sm">${h.name}</span></div>
+                      <span class="block text-[11px] text-slate-500 mt-0.5 md:hidden">${h.city} · ${h.phone}</span>
+                    </td>
+                    <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.city}</td>
+                    <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.phone}</td>
+                    <td class="px-4 py-3 text-right font-semibold text-sm text-slate-200">${h.score !== null ? h.score + "%" : "N/A"}</td>
+                  </tr>`;
+              });
+              document.getElementById("congestion-nearby-card").classList.remove("hidden");
+            }
+          }
 
-        const data = await response.json();
+        } else if (activeTab === "imaging") {
+          const response = await fetch("/predict/imaging", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            document.getElementById("error-message").textContent = data.error || "Prediction failed.";
+            errorCard.classList.remove("hidden");
+          } else {
+            document.getElementById("imaging-value").textContent = data.prediction.toFixed(1);
+            document.getElementById("imaging-results").classList.remove("hidden");
+            const tbody = document.getElementById("imaging-tbody");
+            if (data.nearby && data.nearby.length > 0) {
+              data.nearby.forEach((h, i) => {
+                const bestBadge = i === 0 ? `<span class="inline-block bg-blue-500/20 text-blue-300 text-[10px] font-medium px-2 py-0.5 rounded-md mr-2">Fastest</span>` : "";
+                tbody.innerHTML += `
+                  <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td class="px-4 py-3">
+                      <div class="flex items-center flex-wrap gap-1">${bestBadge}<span class="font-medium text-slate-100 text-sm">${h.name}</span></div>
+                      <span class="block text-[11px] text-slate-500 mt-0.5 md:hidden">${h.city} · ${h.phone}</span>
+                    </td>
+                    <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.city}</td>
+                    <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.phone}</td>
+                    <td class="px-4 py-3 text-right font-semibold text-sm text-slate-200">${h.score !== null ? h.score + " min" : "N/A"}</td>
+                  </tr>`;
+              });
+              document.getElementById("imaging-nearby-card").classList.remove("hidden");
+            }
+          }
 
-        if (!response.ok || !data.success) {
-          document.getElementById("error-message").textContent = data.error || "Prediction failed.";
-          errorCard.classList.remove("hidden");
         } else {
-          document.getElementById("prediction-value").textContent = data.prediction.toFixed(1);
-          document.getElementById("prediction-minutes").textContent = Math.round(data.prediction) + " min";
-          document.getElementById("prediction-type").textContent = "Visit type: " + data.patient_type;
+          const response = await fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
 
-          const d = data.dashboard;
-          document.getElementById("dash-volume").textContent = d["ED Volume"] ?? "N/A";
-          const lbsEl = document.getElementById("dash-lbs");
-          lbsEl.className = "text-xl font-semibold " + lbsColor(d["Left Before Being Seen"]);
-          lbsEl.textContent = d["Left Before Being Seen"] ?? "N/A";
+          const data = await response.json();
 
-          resultsSection.classList.remove("hidden");
+          if (!response.ok || !data.success) {
+            document.getElementById("error-message").textContent = data.error || "Prediction failed.";
+            errorCard.classList.remove("hidden");
+          } else {
+            document.getElementById("prediction-value").textContent = data.prediction.toFixed(1);
+            document.getElementById("prediction-minutes").textContent = Math.round(data.prediction) + " min";
+            document.getElementById("prediction-type").textContent = "Visit type: " + data.patient_type;
 
-          const tbody = document.getElementById("nearby-tbody");
-          if (data.nearby && data.nearby.length > 0) {
-            data.nearby.forEach((h, i) => {
-              const color = waitColor(h.wait);
-              const fastBadge = i === 0
-                ? `<span class="inline-block bg-emerald-500/20 text-emerald-300 text-[10px] font-medium px-2 py-0.5 rounded-md mr-2">Fastest</span>`
-                : "";
-              tbody.innerHTML += `
-                <tr class="hover:bg-slate-800/30 transition-colors">
-                  <td class="px-4 py-3">
-                    <div class="flex items-center flex-wrap gap-1">${fastBadge}<span class="font-medium text-slate-100 text-sm">${h.name}</span></div>
-                    <span class="block text-[11px] text-slate-500 mt-0.5 md:hidden">${h.city} · ${h.phone}</span>
-                  </td>
-                  <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.city}</td>
-                  <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.phone}</td>
-                  <td class="px-4 py-3 text-right font-semibold text-sm ${color}">${h.wait !== null ? h.wait + " min" : "N/A"}</td>
-                </tr>`;
-            });
-            nearbyCard.classList.remove("hidden");
+            const d = data.dashboard;
+            document.getElementById("dash-volume").textContent = d["ED Volume"] ?? "N/A";
+            const lbsEl = document.getElementById("dash-lbs");
+            lbsEl.className = "text-xl font-semibold " + lbsColor(d["Left Before Being Seen"]);
+            lbsEl.textContent = d["Left Before Being Seen"] ?? "N/A";
+
+            resultsSection.classList.remove("hidden");
+
+            const tbody = document.getElementById("nearby-tbody");
+            if (data.nearby && data.nearby.length > 0) {
+              data.nearby.forEach((h, i) => {
+                const color = waitColor(h.wait);
+                const fastBadge = i === 0
+                  ? `<span class="inline-block bg-emerald-500/20 text-emerald-300 text-[10px] font-medium px-2 py-0.5 rounded-md mr-2">Fastest</span>`
+                  : "";
+                tbody.innerHTML += `
+                  <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td class="px-4 py-3">
+                      <div class="flex items-center flex-wrap gap-1">${fastBadge}<span class="font-medium text-slate-100 text-sm">${h.name}</span></div>
+                      <span class="block text-[11px] text-slate-500 mt-0.5 md:hidden">${h.city} · ${h.phone}</span>
+                    </td>
+                    <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.city}</td>
+                    <td class="px-4 py-3 text-slate-400 text-sm hidden md:table-cell">${h.phone}</td>
+                    <td class="px-4 py-3 text-right font-semibold text-sm ${color}">${h.wait !== null ? h.wait + " min" : "N/A"}</td>
+                  </tr>`;
+              });
+              nearbyCard.classList.remove("hidden");
+            }
           }
         }
       } catch (err) {
