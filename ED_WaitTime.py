@@ -12,17 +12,25 @@ app = Flask(__name__)
 # =========================
 DATABRICKS_HOST = os.getenv("DATABRICKS_HOST", "").strip()
 DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN", "").strip()
-MLFLOW_ENDPOINT_URL = os.getenv("MLFLOW_ENDPOINT_URL", "").strip()
+MLFLOW_ENDPOINT_URL            = os.getenv("MLFLOW_ENDPOINT_URL", "").strip()
+CONGESTION_ENDPOINT_URL        = os.getenv("CONGESTION_ENDPOINT_URL", "").strip()
+IMAGING_ENDPOINT_URL           = os.getenv("IMAGING_ENDPOINT_URL", "").strip()
+
+def _resolve_url(url):
+    if not url:
+        return None
+    if url.startswith("http"):
+        return url
+    if not DATABRICKS_HOST:
+        raise RuntimeError("DATABRICKS_HOST must be set if endpoint URL is not a full URL.")
+    return DATABRICKS_HOST.rstrip("/") + "/" + url.lstrip("/")
 
 if not MLFLOW_ENDPOINT_URL:
     raise RuntimeError("MLFLOW_ENDPOINT_URL must be set as an environment variable.")
 
-if MLFLOW_ENDPOINT_URL.startswith("http"):
-    SERVE_URL = MLFLOW_ENDPOINT_URL
-else:
-    if not DATABRICKS_HOST:
-        raise RuntimeError("DATABRICKS_HOST must be set if MLFLOW_ENDPOINT_URL is not a full URL.")
-    SERVE_URL = DATABRICKS_HOST.rstrip("/") + "/" + MLFLOW_ENDPOINT_URL.lstrip("/")
+SERVE_URL            = _resolve_url(MLFLOW_ENDPOINT_URL)
+CONGESTION_SERVE_URL = _resolve_url(CONGESTION_ENDPOINT_URL)   # None until model is ready
+IMAGING_SERVE_URL    = _resolve_url(IMAGING_ENDPOINT_URL)      # None until model is ready
 
 if not DATABRICKS_TOKEN:
     raise RuntimeError("DATABRICKS_TOKEN must be set as an environment variable.")
@@ -71,6 +79,12 @@ MODEL_FEATURES = [
     "ZIP Code", "Year", "Month",
 ]
 
+# Congestion Risk — OP_22: % patients who left before being seen
+CONGESTION_MEASURE = ("OP_22", "Left before being seen")
+
+# Imaging Speed — OP_23: minutes from arrival to head CT results
+IMAGING_MEASURE = ("OP_23", "Head CT or MRI results")
+
 # =========================
 # Helpers
 # =========================
@@ -109,9 +123,10 @@ def build_payload(data, measure_id, measure_name):
     ]
     return {"dataframe_split": {"columns": MODEL_FEATURES, "data": [row]}}
 
-def call_model(data, measure_id, measure_name):
+def call_model(data, measure_id, measure_name, url=None):
+    endpoint = url or SERVE_URL
     payload = build_payload(data, measure_id, measure_name)
-    resp = requests.post(SERVE_URL, headers=HEADERS, json=payload, timeout=120)
+    resp = requests.post(endpoint, headers=HEADERS, json=payload, timeout=120)
     if resp.status_code != 200:
         return None
     result = resp.json()
@@ -237,22 +252,121 @@ def predict():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+def get_nearby_by_measure(state, county, measure_id, sort_asc=True):
+    """Return nearby hospitals ranked by a specific measure score."""
+    nearby = df_ed[
+        (df_ed["State"].str.upper() == state.strip().upper()) &
+        (df_ed["County/Parish"].str.upper() == county.strip().upper()) &
+        (df_ed["Measure ID"] == measure_id)
+    ].copy()
+    if nearby.empty:
+        nearby = df_ed[
+            (df_ed["State"].str.upper() == state.strip().upper()) &
+            (df_ed["Measure ID"] == measure_id)
+        ].copy()
+    if nearby.empty:
+        return []
+    nearby = nearby.sort_values("Year", ascending=False)
+    nearby = nearby.drop_duplicates(subset=["Facility Name"])
+    nearby = nearby.dropna(subset=["Score"])
+    nearby = nearby.sort_values("Score", ascending=sort_asc).head(10)
+    return [
+        {
+            "name":  row["Facility Name"].title(),
+            "city":  row["City/Town"].title() if pd.notna(row["City/Town"]) else "—",
+            "phone": row["Telephone Number"] if pd.notna(row["Telephone Number"]) else "—",
+            "score": round(float(row["Score"]), 1) if pd.notna(row["Score"]) else None,
+        }
+        for _, row in nearby.iterrows()
+    ]
+
+@app.route("/predict/congestion", methods=["POST"])
+def predict_congestion():
+    try:
+        if not CONGESTION_SERVE_URL:
+            return jsonify({"success": False, "error": "Congestion model endpoint not configured yet."}), 503
+        body = request.get_json(silent=True)
+        if not body:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        valid, msg = validate_input(body)
+        if not valid:
+            return jsonify({"success": False, "error": msg}), 400
+
+        measure_id, measure_name = CONGESTION_MEASURE
+        prediction = call_model(body, measure_id, measure_name, url=CONGESTION_SERVE_URL)
+        if prediction is None:
+            return jsonify({"success": False, "error": "Congestion model call failed"}), 500
+
+        # Classify risk level
+        if prediction < 2:
+            risk = "Low"
+        elif prediction < 5:
+            risk = "Medium"
+        else:
+            risk = "High"
+
+        nearby = get_nearby_by_measure(body["State"], body["County/Parish"], measure_id, sort_asc=True)
+        return jsonify({
+            "success":    True,
+            "prediction": prediction,
+            "risk_level": risk,
+            "nearby":     nearby,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/predict/imaging", methods=["POST"])
+def predict_imaging():
+    try:
+        if not IMAGING_SERVE_URL:
+            return jsonify({"success": False, "error": "Imaging model endpoint not configured yet."}), 503
+        body = request.get_json(silent=True)
+        if not body:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        valid, msg = validate_input(body)
+        if not valid:
+            return jsonify({"success": False, "error": msg}), 400
+
+        measure_id, measure_name = IMAGING_MEASURE
+        prediction = call_model(body, measure_id, measure_name, url=IMAGING_SERVE_URL)
+        if prediction is None:
+            return jsonify({"success": False, "error": "Imaging model call failed"}), 500
+
+        nearby = get_nearby_by_measure(body["State"], body["County/Parish"], measure_id, sort_asc=True)
+        return jsonify({
+            "success":    True,
+            "prediction": prediction,
+            "nearby":     nearby,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # =========================
 # Databricks warm-up
 # =========================
 def _warmup():
-    """Fire a dummy prediction on startup and every 9 min to keep Databricks hot."""
+    """Fire dummy predictions on startup and every 9 min to keep all Databricks endpoints hot."""
     warmup_data = {
-        "State": "AZ",
-        "County/Parish": "Maricopa",
-        "ZIP Code": 85001,
+        "State": "TX",
+        "County/Parish": "Harris",
+        "ZIP Code": 77030,
         "Year": 2024,
-        "Month": 1,
+        "Month": 10,
     }
-    measure_id, measure_name = PATIENT_TYPE_MAP["General"]
     while True:
         try:
-            call_model(warmup_data, measure_id, measure_name)
+            mid, mname = PATIENT_TYPE_MAP["General"]
+            call_model(warmup_data, mid, mname)
+        except Exception:
+            pass
+        try:
+            if CONGESTION_SERVE_URL:
+                call_model(warmup_data, *CONGESTION_MEASURE, url=CONGESTION_SERVE_URL)
+        except Exception:
+            pass
+        try:
+            if IMAGING_SERVE_URL:
+                call_model(warmup_data, *IMAGING_MEASURE, url=IMAGING_SERVE_URL)
         except Exception:
             pass
         time.sleep(540)  # 9 minutes
