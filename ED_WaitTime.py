@@ -12,9 +12,7 @@ app = Flask(__name__)
 # =========================
 DATABRICKS_HOST = os.getenv("DATABRICKS_HOST", "").strip()
 DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN", "").strip()
-MLFLOW_ENDPOINT_URL            = os.getenv("MLFLOW_ENDPOINT_URL", "").strip()
-CONGESTION_ENDPOINT_URL        = os.getenv("CONGESTION_ENDPOINT_URL", "").strip()
-IMAGING_ENDPOINT_URL           = os.getenv("IMAGING_ENDPOINT_URL", "").strip()
+MLFLOW_ENDPOINT_URL = os.getenv("MLFLOW_ENDPOINT_URL", "").strip()
 
 def _resolve_url(url):
     if not url:
@@ -28,9 +26,7 @@ def _resolve_url(url):
 if not MLFLOW_ENDPOINT_URL:
     raise RuntimeError("MLFLOW_ENDPOINT_URL must be set as an environment variable.")
 
-SERVE_URL            = _resolve_url(MLFLOW_ENDPOINT_URL)
-CONGESTION_SERVE_URL = _resolve_url(CONGESTION_ENDPOINT_URL)   # None until model is ready
-IMAGING_SERVE_URL    = _resolve_url(IMAGING_ENDPOINT_URL)      # None until model is ready
+SERVE_URL = _resolve_url(MLFLOW_ENDPOINT_URL)
 
 if not DATABRICKS_TOKEN:
     raise RuntimeError("DATABRICKS_TOKEN must be set as an environment variable.")
@@ -123,10 +119,9 @@ def build_payload(data, measure_id, measure_name):
     ]
     return {"dataframe_split": {"columns": MODEL_FEATURES, "data": [row]}}
 
-def call_model(data, measure_id, measure_name, url=None):
-    endpoint = url or SERVE_URL
+def call_model(data, measure_id, measure_name):
     payload = build_payload(data, measure_id, measure_name)
-    resp = requests.post(endpoint, headers=HEADERS, json=payload, timeout=120)
+    resp = requests.post(SERVE_URL, headers=HEADERS, json=payload, timeout=120)
     if resp.status_code != 200:
         return None
     result = resp.json()
@@ -192,12 +187,12 @@ def home():
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
-        "status": "ok",
-        "serve_url": SERVE_URL,
-        "features": MODEL_FEATURES,
-        "patient_types": list(PATIENT_TYPE_MAP.keys()),
-        "facilities_loaded": int(df_ed["Facility Name"].nunique()),
-        "cache_size": len(prediction_cache),
+        "status":             "ok",
+        "serve_url":          SERVE_URL,
+        "features":           MODEL_FEATURES,
+        "patient_types":      list(PATIENT_TYPE_MAP.keys()),
+        "facilities_loaded":  int(df_ed["Facility Name"].nunique()),
+        "cache_size":         len(prediction_cache),
     })
 
 @app.route("/predict", methods=["POST"])
@@ -283,8 +278,6 @@ def get_nearby_by_measure(state, county, measure_id, sort_asc=True):
 @app.route("/predict/congestion", methods=["POST"])
 def predict_congestion():
     try:
-        if not CONGESTION_SERVE_URL:
-            return jsonify({"success": False, "error": "Congestion model endpoint not configured yet."}), 503
         body = request.get_json(silent=True)
         if not body:
             return jsonify({"success": False, "error": "No data provided"}), 400
@@ -293,11 +286,10 @@ def predict_congestion():
             return jsonify({"success": False, "error": msg}), 400
 
         measure_id, measure_name = CONGESTION_MEASURE
-        prediction = call_model(body, measure_id, measure_name, url=CONGESTION_SERVE_URL)
+        prediction = call_model_cached(body, measure_id, measure_name)
         if prediction is None:
             return jsonify({"success": False, "error": "Congestion model call failed"}), 500
 
-        # Classify risk level
         if prediction < 2:
             risk = "Low"
         elif prediction < 5:
@@ -318,8 +310,6 @@ def predict_congestion():
 @app.route("/predict/imaging", methods=["POST"])
 def predict_imaging():
     try:
-        if not IMAGING_SERVE_URL:
-            return jsonify({"success": False, "error": "Imaging model endpoint not configured yet."}), 503
         body = request.get_json(silent=True)
         if not body:
             return jsonify({"success": False, "error": "No data provided"}), 400
@@ -328,7 +318,7 @@ def predict_imaging():
             return jsonify({"success": False, "error": msg}), 400
 
         measure_id, measure_name = IMAGING_MEASURE
-        prediction = call_model(body, measure_id, measure_name, url=IMAGING_SERVE_URL)
+        prediction = call_model_cached(body, measure_id, measure_name)
         if prediction is None:
             return jsonify({"success": False, "error": "Imaging model call failed"}), 500
 
@@ -345,7 +335,7 @@ def predict_imaging():
 # Databricks warm-up
 # =========================
 def _warmup():
-    """Fire dummy predictions on startup and every 9 min to keep all Databricks endpoints hot."""
+    """Fire a dummy prediction on startup and every 9 min to keep the Databricks endpoint hot."""
     warmup_data = {
         "State": "TX",
         "County/Parish": "Harris",
@@ -357,16 +347,6 @@ def _warmup():
         try:
             mid, mname = PATIENT_TYPE_MAP["General"]
             call_model(warmup_data, mid, mname)
-        except Exception:
-            pass
-        try:
-            if CONGESTION_SERVE_URL:
-                call_model(warmup_data, *CONGESTION_MEASURE, url=CONGESTION_SERVE_URL)
-        except Exception:
-            pass
-        try:
-            if IMAGING_SERVE_URL:
-                call_model(warmup_data, *IMAGING_MEASURE, url=IMAGING_SERVE_URL)
         except Exception:
             pass
         time.sleep(540)  # 9 minutes
