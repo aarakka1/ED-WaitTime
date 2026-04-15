@@ -304,12 +304,16 @@
       clearAll();
     });
 
-    async function fetchWithRetry(url, options, retries = 2, delayMs = 4000) {
+    async function fetchWithRetry(url, options, retries = 3, delayMs = 4000, timeoutMs = 25000) {
       for (let attempt = 1; attempt <= retries; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
-          const resp = await fetch(url, options);
+          const resp = await fetch(url, { ...options, signal: controller.signal });
+          clearTimeout(timer);
           return resp;
         } catch (err) {
+          clearTimeout(timer);
           if (attempt === retries) throw err;
           document.getElementById("error-message").textContent =
             "Model is warming up — retrying in " + (delayMs / 1000) + "s… (attempt " + attempt + " of " + retries + ")";
