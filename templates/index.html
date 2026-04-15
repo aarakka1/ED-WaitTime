@@ -304,6 +304,22 @@
       clearAll();
     });
 
+    async function fetchWithRetry(url, options, retries = 2, delayMs = 4000) {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const resp = await fetch(url, options);
+          return resp;
+        } catch (err) {
+          if (attempt === retries) throw err;
+          document.getElementById("error-message").textContent =
+            "Model is warming up — retrying in " + (delayMs / 1000) + "s… (attempt " + attempt + " of " + retries + ")";
+          errorCard.classList.remove("hidden");
+          await new Promise(r => setTimeout(r, delayMs));
+          clearAll();
+        }
+      }
+    }
+
     submitBtn.addEventListener("click", async (e) => {
       e.preventDefault();
       clearAll();
@@ -326,7 +342,7 @@
 
       try {
         if (activeTab === "congestion") {
-          const response = await fetch("/predict/congestion", {
+          const response = await fetchWithRetry("/predict/congestion", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -362,7 +378,7 @@
           }
 
         } else if (activeTab === "imaging") {
-          const response = await fetch("/predict/imaging", {
+          const response = await fetchWithRetry("/predict/imaging", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -394,7 +410,7 @@
           }
 
         } else {
-          const response = await fetch("/predict", {
+          const response = await fetchWithRetry("/predict", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
